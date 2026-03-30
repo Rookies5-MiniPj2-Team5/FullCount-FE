@@ -62,11 +62,11 @@ export default function MyPage() {
         <div className="my-section-title">🛡️ 내 정보</div>
         <div className="my-stat-item">
           <div className="my-stat-label">🔥 매너 온도</div>
-          <div className="my-stat-value">{user.mannerTemperature.toFixed(1)}°</div>
+          <div className="my-stat-value">{user.mannerTemperature?.toFixed(1) ?? '36.5'}°</div>
         </div>
         <div className="my-stat-item">
           <div className="my-stat-label">🏆 뱃지 등급</div>
-          <div className="my-stat-value" style={{ color: '#0d6efd' }}>{user.badgeLevel}</div>
+          <div className="my-stat-value" style={{ color: '#0d6efd' }}>{user.badgeLevel ?? 'ROOKIE'}</div>
         </div>
       </div>
 

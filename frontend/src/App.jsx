@@ -41,7 +41,9 @@ export default function App() {
 
   const renderPage = () => {
     switch (tab) {
-      case 'home': return <HomePage />
+      case 'home': return selectedPostId
+        ? <MeetupDetailPage postId={selectedPostId} onBack={() => setSelectedPostId(null)} />
+        : <HomePage onSelectPost={(id) => setSelectedPostId(id)} />
       case 'schedule': return <SchedulePage />
       case 'meetup': return selectedPostId
         ? <MeetupDetailPage postId={selectedPostId} onBack={() => setSelectedPostId(null)} />
