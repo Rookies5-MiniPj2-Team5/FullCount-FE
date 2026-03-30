@@ -1,7 +1,7 @@
 import { TeamBadge } from '../components/TeamComponents'
 import KboStandings from '../components/KboStandings'
 
-export default function HomePage() {
+export default function HomePage({ onSelectPost }) {
   return (
     <div className="home-page">
       <div className="page-header">
@@ -41,10 +41,13 @@ export default function HomePage() {
           <div className="home-section">
             <div className="home-section-title">🔥 최신 모집글</div>
             {[
-              { team1: 'LG', team2: 'DU', title: '3/28 잠실 LG vs 두산 같이 보실분~', count: '2/4' },
-              { team1: 'SSG', team2: 'KIA', title: '인천 SSG 경기 보실 직관리 구해요', count: '1/3' },
+              { id: 1, team1: 'LG', team2: 'DU', title: '3/28 잠실 LG vs 두산 같이 보실분~', count: '2/4' },
+              { id: 2, team1: 'SSG', team2: 'KIA', title: '인천 SSG 경기 보실 직관리 구해요', count: '1/3' },
             ].map((p, i) => (
-              <div key={i} className="card" style={{ borderRadius: 12, marginBottom: 8, border: '1px solid #eee' }}>
+              <div key={i} className="card"
+                onClick={() => onSelectPost && onSelectPost(p.id)}
+                style={{ borderRadius: 12, marginBottom: 8, border: '1px solid #eee', cursor: 'pointer' }}
+              >
                 <div className="card-vs">
                   <TeamBadge teamId={p.team1} />
                   <span style={{ fontSize: 12, color: '#bbb', margin: '0 4px' }}>VS</span>
