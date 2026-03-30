@@ -33,7 +33,7 @@ export default function SignupPage({ onSwitchToLogin }) {
             type="email"
             style={{ width: '100%', borderRadius: 8, padding: 12, border: '1px solid #ddd' }}
             value={formData.email}
-            onChange={(e) => setFormData({...formData, email: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
             required
           />
         </div>
@@ -43,7 +43,7 @@ export default function SignupPage({ onSwitchToLogin }) {
             type="password"
             style={{ width: '100%', borderRadius: 8, padding: 12, border: '1px solid #ddd' }}
             value={formData.password}
-            onChange={(e) => setFormData({...formData, password: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
             required
           />
         </div>
@@ -53,7 +53,7 @@ export default function SignupPage({ onSwitchToLogin }) {
             type="text"
             style={{ width: '100%', borderRadius: 8, padding: 12, border: '1px solid #ddd' }}
             value={formData.nickname}
-            onChange={(e) => setFormData({...formData, nickname: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, nickname: e.target.value })}
             required
           />
         </div>
@@ -62,11 +62,11 @@ export default function SignupPage({ onSwitchToLogin }) {
           <select
             style={{ width: '100%', borderRadius: 8, padding: 12, border: '1px solid #ddd' }}
             value={formData.teamId}
-            onChange={(e) => setFormData({...formData, teamId: Number(e.target.value)})}
+            onChange={(e) => setFormData({ ...formData, teamId: Number(e.target.value) })}
           >
-             {TEAMS.filter(t => t.id !== 'ALL').map((t, index) => (
-                <option key={t.id} value={index + 1}>{t.name}</option>
-             ))}
+            {TEAMS.filter(t => t.id !== 'ALL').map((t, index) => (
+              <option key={t.id} value={index + 1}>{t.name}</option>
+            ))}
           </select>
         </div>
 
@@ -75,11 +75,7 @@ export default function SignupPage({ onSwitchToLogin }) {
         <button
           type="submit"
           style={{
-<<<<<<< HEAD
-            width: '100%', padding: 14, background: '#1a2a4a', color: '#fff',
-=======
             width: '100%', padding: 14, background: '#e94560', color: '#fff',
->>>>>>> a7edd96c2f5669be998ac56177f293e88603e813
             border: 'none', borderRadius: 8, fontWeight: 700, cursor: 'pointer'
           }}
         >
@@ -90,11 +86,7 @@ export default function SignupPage({ onSwitchToLogin }) {
       <div style={{ marginTop: 24, textAlign: 'center', fontSize: 13, color: '#666' }}>
         이미 계정이 있으신가요? <span
           onClick={onSwitchToLogin}
-<<<<<<< HEAD
-          style={{ color: '#1a2a4a', fontWeight: 700, cursor: 'pointer' }}
-=======
           style={{ color: '#e94560', fontWeight: 700, cursor: 'pointer' }}
->>>>>>> a7edd96c2f5669be998ac56177f293e88603e813
         >로그인</span>
       </div>
     </div>
