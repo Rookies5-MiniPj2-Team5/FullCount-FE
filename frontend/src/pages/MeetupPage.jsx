@@ -3,7 +3,11 @@ import { useAuth } from '../context/AuthContext'
 import { TeamBadge, TeamFilter, TEAMS } from '../components/TeamComponents'
 import api from '../api/api'
 
+<<<<<<< HEAD
 export default function MeetupPage() {
+=======
+export default function MeetupPage({ onSelectPost }) {
+>>>>>>> a7edd96c2f5669be998ac56177f293e88603e813
   const { user } = useAuth();
   const [posts, setPosts] = useState([])
   const [filter, setFilter] = useState('ALL')
@@ -12,15 +16,29 @@ export default function MeetupPage() {
 
   // 작성 폼 상태
   const [formData, setFormData] = useState({
+<<<<<<< HEAD
     title: '', content: '', matchDate: '', 
+=======
+    title: '', content: '', matchDate: '',
+>>>>>>> a7edd96c2f5669be998ac56177f293e88603e813
     homeTeamId: '', awayTeamId: '', maxParticipants: 2
   })
 
   const fetchPosts = async () => {
     try {
       setLoading(true)
+<<<<<<< HEAD
       const response = await api.get('/posts', { params: { boardType: 'MEETUP' } })
       setPosts(response.data.content)
+=======
+      // BE 연동 전 임시 더미 데이터
+      setPosts([
+        { id: 1, title: '잠실 LG vs 두산 같이 보실분!', content: '같이 응원해요!', matchDate: '2026-04-05', homeTeamName: 'LG', awayTeamName: 'DU', authorNickname: '테스트유저', teamName: 'LG', maxParticipants: 4, currentCount: 1 }
+      ])
+      // TODO: BE 연동 시 아래 코드로 교체
+      // const response = await api.get('/posts', { params: { boardType: 'MEETUP' } })
+      // setPosts(response.data.content)
+>>>>>>> a7edd96c2f5669be998ac56177f293e88603e813
     } catch (error) {
       console.error('게시글 로딩 실패:', error)
     } finally {
@@ -78,6 +96,7 @@ export default function MeetupPage() {
         ) : (
           <div className="card-grid">
             {filtered.map(post => (
+<<<<<<< HEAD
           <div key={post.id} className="card">
             <div className="card-meta">
               📅 {post.matchDate} · 👤 {post.authorNickname}
@@ -108,6 +127,41 @@ export default function MeetupPage() {
               </div>
             </div>
           </div>
+=======
+              <div key={post.id} className="card"
+                onClick={() => onSelectPost(post.id)}
+                style={{ cursor: 'pointer' }}
+              >
+                <div className="card-meta">
+                  📅 {post.matchDate} · 👤 {post.authorNickname}
+                  {user?.nickname === post.authorNickname && (
+                    <span
+                      onClick={(e) => { e.stopPropagation(); handleDelete(post.id) }}
+                      style={{ marginLeft: 'auto', color: '#e94560', cursor: 'pointer', fontSize: 10 }}
+                    >삭제</span>
+                  )}
+                </div>
+                <div className="card-vs">
+                  {post.homeTeamName ? <TeamBadge teamId={post.homeTeamName} /> : <TeamBadge teamId="LG" />}
+                  <span style={{ fontSize: 13, color: '#999' }}>VS</span>
+                  {post.awayTeamName ? <TeamBadge teamId={post.awayTeamName} /> : <TeamBadge teamId="DU" />}
+                </div>
+                <div className="card-title">{post.title}</div>
+                <div className="card-desc">{post.content}</div>
+                <div className="card-footer">
+                  <div className="author-info">
+                    <div className="avatar-sm">{post.authorNickname.substring(0, 1)}</div>
+                    <div>
+                      <div className="author-name">{post.authorNickname}</div>
+                      <TeamBadge teamId={post.teamName || 'LG'} />
+                    </div>
+                  </div>
+                  <div className="participant-count">
+                    👤 {post.maxParticipants}명 모집
+                  </div>
+                </div>
+              </div>
+>>>>>>> a7edd96c2f5669be998ac56177f293e88603e813
             ))}
           </div>
         )}
@@ -119,12 +173,17 @@ export default function MeetupPage() {
       {isModalOpen && (
         <div style={{
           position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+<<<<<<< HEAD
           background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', 
+=======
+          background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex',
+>>>>>>> a7edd96c2f5669be998ac56177f293e88603e813
           alignItems: 'center', justifyContent: 'center', padding: 20
         }}>
           <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 400, padding: 24 }}>
             <h3 style={{ marginBottom: 20 }}>직관 메이트 모집</h3>
             <form onSubmit={handleCreate}>
+<<<<<<< HEAD
               <input 
                 placeholder="제목" className="chip" style={{ width: '100%', marginBottom: 12, borderRadius: 8, padding: 10, border: '1px solid #ddd' }}
                 value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} required
@@ -152,6 +211,35 @@ export default function MeetupPage() {
               <input 
                 type="date" style={{ width: '100%', marginBottom: 20, padding: 8, borderRadius: 8, border: '1px solid #ddd' }}
                 value={formData.matchDate} onChange={e => setFormData({...formData, matchDate: e.target.value})} required
+=======
+              <input
+                placeholder="제목" className="chip" style={{ width: '100%', marginBottom: 12, borderRadius: 8, padding: 10, border: '1px solid #ddd' }}
+                value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} required
+              />
+              <textarea
+                placeholder="내용" className="chip" style={{ width: '100%', height: 100, marginBottom: 12, borderRadius: 8, padding: 10, border: '1px solid #ddd' }}
+                value={formData.content} onChange={e => setFormData({ ...formData, content: e.target.value })} required
+              />
+              <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                <select
+                  style={{ flex: 1, padding: 8, borderRadius: 8, border: '1px solid #ddd' }}
+                  onChange={e => setFormData({ ...formData, homeTeamId: e.target.value })} required
+                >
+                  <option value="">홈 팀 선택</option>
+                  {TEAMS.filter(t => t.id !== 'ALL').map((t, i) => <option key={t.id} value={i + 1}>{t.name}</option>)}
+                </select>
+                <select
+                  style={{ flex: 1, padding: 8, borderRadius: 8, border: '1px solid #ddd' }}
+                  onChange={e => setFormData({ ...formData, awayTeamId: e.target.value })} required
+                >
+                  <option value="">어웨이 선택</option>
+                  {TEAMS.filter(t => t.id !== 'ALL').map((t, i) => <option key={t.id} value={i + 1}>{t.name}</option>)}
+                </select>
+              </div>
+              <input
+                type="date" style={{ width: '100%', marginBottom: 20, padding: 8, borderRadius: 8, border: '1px solid #ddd' }}
+                value={formData.matchDate} onChange={e => setFormData({ ...formData, matchDate: e.target.value })} required
+>>>>>>> a7edd96c2f5669be998ac56177f293e88603e813
               />
               <div style={{ display: 'flex', gap: 10 }}>
                 <button type="submit" style={{ flex: 1, padding: 12, background: '#e94560', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700 }}>등록</button>

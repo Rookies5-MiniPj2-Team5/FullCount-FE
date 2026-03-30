@@ -75,7 +75,11 @@ export default function SignupPage({ onSwitchToLogin }) {
         <button
           type="submit"
           style={{
+<<<<<<< HEAD
             width: '100%', padding: 14, background: '#1a2a4a', color: '#fff',
+=======
+            width: '100%', padding: 14, background: '#e94560', color: '#fff',
+>>>>>>> a7edd96c2f5669be998ac56177f293e88603e813
             border: 'none', borderRadius: 8, fontWeight: 700, cursor: 'pointer'
           }}
         >
@@ -86,7 +90,11 @@ export default function SignupPage({ onSwitchToLogin }) {
       <div style={{ marginTop: 24, textAlign: 'center', fontSize: 13, color: '#666' }}>
         이미 계정이 있으신가요? <span
           onClick={onSwitchToLogin}
+<<<<<<< HEAD
           style={{ color: '#1a2a4a', fontWeight: 700, cursor: 'pointer' }}
+=======
+          style={{ color: '#e94560', fontWeight: 700, cursor: 'pointer' }}
+>>>>>>> a7edd96c2f5669be998ac56177f293e88603e813
         >로그인</span>
       </div>
     </div>

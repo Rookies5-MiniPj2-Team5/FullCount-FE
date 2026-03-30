@@ -7,6 +7,7 @@ import SchedulePage from './pages/SchedulePage'
 import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
 import SignupPage from './pages/SignupPage'
+<<<<<<< HEAD
 import './index.css'
 
 const NAV_ITEMS = [
@@ -15,11 +16,26 @@ const NAV_ITEMS = [
   { id: 'meetup',   label: '모집글',  icon: '📋' },
   { id: 'crew',     label: '크루',    icon: '👥' },
   { id: 'my',       label: '마이페이지', icon: '👤' },
+=======
+import MeetupDetailPage from './pages/MeetupDetailPage'
+import './index.css'
+
+const NAV_ITEMS = [
+  { id: 'home', label: '홈', icon: '🏠' },
+  { id: 'schedule', label: '경기일정', icon: '📅' },
+  { id: 'meetup', label: '모집글', icon: '📋' },
+  { id: 'crew', label: '크루', icon: '👥' },
+  { id: 'my', label: '마이페이지', icon: '👤' },
+>>>>>>> a7edd96c2f5669be998ac56177f293e88603e813
 ]
 
 export default function App() {
   const { user, loading } = useAuth();
   const [tab, setTab] = useState('meetup')
+<<<<<<< HEAD
+=======
+  const [selectedPostId, setSelectedPostId] = useState(null)
+>>>>>>> a7edd96c2f5669be998ac56177f293e88603e813
   const [authMode, setAuthMode] = useState('login'); // 'login' | 'signup'
 
   if (loading) {
@@ -32,19 +48,34 @@ export default function App() {
 
   // 로그인하지 않은 경우
   if (!user) {
+<<<<<<< HEAD
     return authMode === 'login' 
+=======
+    return authMode === 'login'
+>>>>>>> a7edd96c2f5669be998ac56177f293e88603e813
       ? <LoginPage onSwitchToSignup={() => setAuthMode('signup')} />
       : <SignupPage onSwitchToLogin={() => setAuthMode('login')} />;
   }
 
   const renderPage = () => {
     switch (tab) {
+<<<<<<< HEAD
       case 'home':     return <HomePage />
       case 'schedule': return <SchedulePage />
       case 'meetup':   return <MeetupPage />
       case 'crew':     return <CrewPage />
       case 'my':       return <MyPage />
       default:         return <MeetupPage />
+=======
+      case 'home': return <HomePage />
+      case 'schedule': return <SchedulePage />
+      case 'meetup': return selectedPostId
+        ? <MeetupDetailPage postId={selectedPostId} onBack={() => setSelectedPostId(null)} />
+        : <MeetupPage onSelectPost={(id) => setSelectedPostId(id)} />
+      case 'crew': return <CrewPage />
+      case 'my': return <MyPage />
+      default: return <MeetupPage />
+>>>>>>> a7edd96c2f5669be998ac56177f293e88603e813
     }
   }
 
