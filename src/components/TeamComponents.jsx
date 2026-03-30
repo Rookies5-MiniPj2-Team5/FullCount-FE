@@ -18,9 +18,31 @@ export const TEAM_NAME = {
   SA: '삼성', LO: '롯데', HH: '한화', KT: 'KT', NC: 'NC', WO: '키움',
 }
 
+// 팀 ID → 로고 이미지 파일명 매핑
+export const TEAM_LOGO = {
+  LG:  '/LG.png',
+  DU:  '/두산.png',
+  SSG: '/SK.png',
+  KIA: '/기아.png',
+  SA:  '/SS.png',
+  LO:  '/롯데.png',
+  HH:  '/HH.png',
+  KT:  '/KT.png',
+  NC:  '/NC.png',
+  WO:  '/키움.png',
+}
+
 export function TeamBadge({ teamId }) {
+  const logo = TEAM_LOGO[teamId]
   return (
     <span className={`team-badge team-${teamId}`}>
+      {logo && (
+        <img
+          src={logo}
+          alt={TEAM_NAME[teamId] ?? teamId}
+          className="team-badge-logo"
+        />
+      )}
       {TEAM_NAME[teamId] ?? teamId}
     </span>
   )

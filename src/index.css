@@ -24,12 +24,22 @@ body {
 
 /* ===== 팀 색상 ===== */
 .team-badge {
-  display: inline-block;
-  padding: 2px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px 2px 4px;
   border-radius: 20px;
   font-size: 11px;
   font-weight: 700;
   color: #fff;
+}
+.team-badge-logo {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  border-radius: 50%;
+  background: #fff;
+  flex-shrink: 0;
 }
 .team-LG   { background: #C30452; }
 .team-DU   { background: #131230; }
@@ -388,3 +398,221 @@ body {
 }
 .empty-state .empty-icon { font-size: 48px; margin-bottom: 12px; }
 .empty-state p { font-size: 14px; }
+
+/* ===== 홈 2컬럼 레이아웃 ===== */
+.home-layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 28px;
+  align-items: start;
+  padding: 24px 0 80px;
+}
+
+.home-main { display: flex; flex-direction: column; gap: 20px; }
+
+/* 배너 */
+.home-banner {
+  background: linear-gradient(135deg, #1a2a4a 0%, #e94560 100%);
+  border-radius: 16px;
+  padding: 24px;
+  color: #fff;
+}
+.home-banner-label { font-size: 13px; opacity: 0.8; margin-bottom: 4px; }
+.home-banner-match { font-size: 22px; font-weight: 800; }
+.home-banner-sub   { font-size: 13px; opacity: 0.7; margin-top: 4px; }
+
+/* 빠른 메뉴 */
+.quick-menu {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+.quick-menu-item {
+  background: #fff;
+  border-radius: 12px;
+  padding: 14px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.quick-menu-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.quick-menu-icon  { font-size: 22px; }
+.quick-menu-label { font-size: 11px; color: #555; font-weight: 600; }
+
+/* 섹션 타이틀 */
+.home-section-title { font-size: 15px; font-weight: 700; margin-bottom: 12px; }
+
+/* ===== KBO 순위 위젯 ===== */
+.kbo-standings-widget {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+  overflow: hidden;
+  position: sticky;
+  top: 88px;  /* header 높이 + 여백 */
+}
+
+.standings-header {
+  background: linear-gradient(135deg, #1a2a4a 0%, #0a1628 100%);
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #fff;
+}
+.standings-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 700;
+}
+.standings-icon { font-size: 16px; }
+.standings-mock-badge {
+  background: rgba(255,255,255,0.2);
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+.standings-updated {
+  font-size: 10px;
+  opacity: 0.6;
+}
+
+/* 컬럼 헤더 */
+.standings-col-header {
+  display: grid;
+  grid-template-columns: 36px 1fr 36px 28px 28px 44px 44px;
+  gap: 0;
+  padding: 6px 12px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #eee;
+  font-size: 10px;
+  font-weight: 700;
+  color: #888;
+  text-align: center;
+}
+.standings-col-header .col-team { text-align: left; padding-left: 4px; }
+
+/* 순위 행 */
+.standings-list { padding: 4px 0; }
+.standings-row {
+  display: grid;
+  grid-template-columns: 36px 1fr 36px 28px 28px 44px 44px;
+  gap: 0;
+  align-items: center;
+  padding: 7px 12px;
+  font-size: 12px;
+  border-bottom: 1px solid #f5f5f5;
+  transition: background 0.15s;
+}
+.standings-row:last-child { border-bottom: none; }
+.standings-row:hover { background: #f9f9f9; }
+.standings-row--playoff {
+  border-left: 3px solid var(--team-color);
+}
+
+/* 공통 컬럼 */
+.col-rank  { text-align: center; }
+.col-team  { display: flex; align-items: center; gap: 6px; }
+.col-num   { text-align: center; color: #444; }
+.col-pct   { text-align: center; color: #333; font-weight: 600; font-size: 11px; }
+.col-gb    { text-align: center; color: #888; font-size: 11px; }
+
+.rank-medal { font-size: 14px; line-height: 1; }
+.rank-num   { font-size: 13px; font-weight: 700; color: #444; }
+.rank-playoff { color: #e94560; }
+
+.standings-logo {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.standings-team-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: #222;
+  white-space: nowrap;
+}
+.standings-wins {
+  color: #e94560;
+  font-weight: 700;
+}
+
+/* 로딩 */
+.standings-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 30px 12px;
+  color: #999;
+  font-size: 12px;
+}
+.standings-spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid #eee;
+  border-top-color: #e94560;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* 하단 범례 & 링크 */
+.standings-legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font-size: 10px;
+  color: #999;
+  border-top: 1px solid #f0f0f0;
+}
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.legend-dot.playoff { background: #e94560; }
+.standings-link {
+  display: block;
+  text-align: center;
+  padding: 10px;
+  font-size: 11px;
+  color: #e94560;
+  font-weight: 600;
+  text-decoration: none;
+  border-top: 1px solid #f0f0f0;
+  transition: background 0.15s;
+}
+.standings-link:hover { background: #fff5f7; }
+
+/* ── 반응형 ── */
+@media (max-width: 900px) {
+  .home-layout {
+    grid-template-columns: 1fr;
+  }
+  .kbo-standings-widget {
+    position: static;
+    order: -1;   /* 모바일에서 순위를 메인 위로 */
+  }
+  .quick-menu {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+@media (max-width: 520px) {
+  .quick-menu { grid-template-columns: repeat(2, 1fr); }
+}
+
