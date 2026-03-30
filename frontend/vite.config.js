@@ -8,6 +8,11 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     proxy: {
+      // 백엔드 Spring Boot API
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
       // 네이버 스포츠 API 게이트웨이 (KBO 일정/순위 JSON API)
       '/naver-api': {
         target: 'https://api-gw.sports.naver.com',
