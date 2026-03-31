@@ -41,11 +41,12 @@ export default function App() {
 
   const renderPage = () => {
     switch (tab) {
-      case 'home': return <HomePage />
+      case 'home': return <HomePage onNavigate={(t) => setTab(t)} />
       case 'schedule': return <SchedulePage />
       case 'meetup': return selectedPostId
         ? <MeetupDetailPage postId={selectedPostId} onBack={() => setSelectedPostId(null)} />
-        : <MeetupPage onSelectPost={(id) => setSelectedPostId(id)} />
+        : <MeetupPage key="meetup" onSelectPost={(id) => setSelectedPostId(id)} />
+      case 'meetup-create': return <MeetupPage key="meetup-create" initialOpen={true} onSelectPost={(id) => setSelectedPostId(id)} />
       case 'crew': return <CrewPage />
       case 'my': return <MyPage />
       default: return <MeetupPage />

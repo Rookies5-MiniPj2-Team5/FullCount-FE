@@ -3,11 +3,11 @@ import { useAuth } from '../context/AuthContext'
 import { TeamBadge, TeamFilter, TEAMS } from '../components/TeamComponents'
 import api from '../api/api'
 
-export default function MeetupPage({ onSelectPost }) {
+export default function MeetupPage({ onSelectPost, initialOpen }) {
   const { user } = useAuth();
   const [posts, setPosts] = useState([])
   const [filter, setFilter] = useState('ALL')
-  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isModalOpen, setIsModalOpen] = useState(initialOpen || false)
   const [loading, setLoading] = useState(true)
 
   // 작성 폼 상태
