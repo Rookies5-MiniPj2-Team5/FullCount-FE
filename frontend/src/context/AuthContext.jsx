@@ -12,7 +12,7 @@ export const AuthProvider = ({ children }) => {
   const fetchMyInfo = async (token = null) => {
     try {
       const currentToken = token || getToken();
-      
+
       // 토큰이 없거나 "undefined" 문자열이면 중단
       if (!currentToken || currentToken === 'undefined') {
         setLoading(false);
@@ -41,11 +41,11 @@ export const AuthProvider = ({ children }) => {
       const response = await authApi.login(email, password);
       const data = response.data.data || response.data;
       const accessToken = data.accessToken;
-      
+
       if (accessToken) {
         setToken(accessToken);
         // 로그인 직후 Axios 헤더 반영 전일 수 있으므로 토큰 직접 전달
-        await fetchMyInfo(accessToken); 
+        await fetchMyInfo(accessToken);
         return true;
       }
       return false;
