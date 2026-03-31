@@ -8,6 +8,8 @@ import SchedulePage from './pages/SchedulePage'
 import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
 import SignupPage from './pages/SignupPage'
+import ChatPage from './pages/ChatPage'
+import ChatFab from './components/ChatFab'
 import './index.css'
 
 const NAV_ITEMS = [
@@ -19,41 +21,67 @@ const NAV_ITEMS = [
 ]
 
 export default function App() {
-  const { user, loading } = useAuth();
-  const [tab, setTab] = useState('home')
+  const { user, loading } = useAuth()
+  const [tab, setTab] = useState('meetup')
   const [selectedPostId, setSelectedPostId] = useState(null)
-  const [authMode, setAuthMode] = useState('login'); // 'login' | 'signup'
+  const [authMode, setAuthMode] = useState('login') // 'login' | 'signup'
+  const [chatRoom, setChatRoom] = useState(null)
 
   if (loading) {
     return (
       <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <p>Loading...</p>
       </div>
-    );
+    )
   }
 
   // 로그인하지 않은 경우
   if (!user) {
     return authMode === 'login'
       ? <LoginPage onSwitchToSignup={() => setAuthMode('signup')} />
-      : <SignupPage onSwitchToLogin={() => setAuthMode('login')} />;
+      : <SignupPage onSwitchToLogin={() => setAuthMode('login')} />
+  }
+
+  // hatFab에서 채팅방 클릭 시 호출
+  const handleOpenChat = (room) => {
+    setChatRoom(room)
+  }
+
+  // ChatPage 뒤로가기 시 호출
+  const handleCloseChat = () => {
+    setChatRoom(null)
   }
 
   const renderPage = () => {
     switch (tab) {
-      case 'home': return selectedPostId
-        ? <MeetupDetailPage postId={selectedPostId} onBack={() => setSelectedPostId(null)} />
-        : <HomePage onNavigate={(t) => setTab(t)} onSelectPost={(id) => setSelectedPostId(id)} />
-      case 'schedule': return <SchedulePage />
-      case 'meetup': return selectedPostId
-        ? <MeetupDetailPage postId={selectedPostId} onBack={() => setSelectedPostId(null)} />
-        : <MeetupPage key="meetup" onSelectPost={(id) => setSelectedPostId(id)} />
-      case 'meetup-create': return <MeetupPage key="meetup-create" initialOpen={true} onSelectPost={(id) => setSelectedPostId(id)} />
-      case 'crew': return <CrewPage />
-      case 'my': return <MyPage />
-      default: return <MeetupPage />
+      case 'home':
+        return selectedPostId
+          ? <MeetupDetailPage postId={selectedPostId} onBack={() => setSelectedPostId(null)} />
+          : <HomePage onNavigate={(t) => setTab(t)} onSelectPost={(id) => setSelectedPostId(id)} />;
+
+      case 'schedule':
+        return <SchedulePage />;
+
+      case 'meetup':
+        return selectedPostId
+          ? <MeetupDetailPage postId={selectedPostId} onBack={() => setSelectedPostId(null)} />
+          : <MeetupPage key="meetup" onSelectPost={(id) => setSelectedPostId(id)} />;
+
+      // Meetup 생성 모드
+      case 'meetup-create':
+        return <MeetupPage key="meetup-create" initialOpen={true} onSelectPost={(id) => setSelectedPostId(id)} />;
+
+      // CrewPage에 currentUser(user) 데이터 전달 로직 적용
+      case 'crew':
+        return <CrewPage currentUser={user} />;
+
+      case 'my':
+        return <MyPage />;
+
+      default:
+        return <MeetupPage onSelectPost={(id) => setSelectedPostId(id)} />;
     }
-  }
+  };
 
   return (
     <div className="app-layout">
@@ -86,6 +114,25 @@ export default function App() {
           {renderPage()}
         </div>
       </main>
+
+      {/* 채팅 FAB (모든 탭 공통) */}
+      <ChatFab
+        currentUser={user}
+        onOpenChat={handleOpenChat}
+      />
+
+      {/* 채팅 팝업 — 기존 페이지 위에 오버레이로 표시 */}
+      {chatRoom && (
+        <ChatPage
+          crew={{ title: chatRoom.title, team: chatRoom.crewTeam }}
+          roomType={chatRoom.roomType}
+          roomId={chatRoom.id}
+          currentUser={user}
+          isDm={chatRoom.roomType === 'ONE_ON_ONE'}
+          dmTargetNickname={chatRoom.roomType === 'ONE_ON_ONE' ? chatRoom.title : undefined}
+          onBack={handleCloseChat}
+        />
+      )}
     </div>
   )
 }
