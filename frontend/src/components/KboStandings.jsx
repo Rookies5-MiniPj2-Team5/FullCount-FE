@@ -23,7 +23,6 @@ const TEAM_COLORS = {
 }
 
 // KBO 공식 홈페이지 순위 HTML 파싱
-// koreabaseball.com은 서버사이드 렌더링이라 fetch로 실제 테이블 데이터를 가져올 수 있음
 async function fetchKboStandings() {
   const res = await fetch(
     '/kbo-official/Record/TeamRank/TeamRankDaily.aspx',
@@ -40,8 +39,6 @@ async function fetchKboStandings() {
   const parser = new DOMParser()
   const doc = parser.parseFromString(html, 'text/html')
 
-  // KBO 공식 사이트 순위 테이블 셀렉터
-  // 실제 구조: <table class="tData01 tt"> 또는 id="tblRecord"
   const tableSelectors = [
     '#content table tbody tr',
     'table.tData01 tbody tr',
@@ -61,12 +58,10 @@ async function fetchKboStandings() {
     const cells = row.querySelectorAll('td')
     if (cells.length < 7) return
 
-    // 첫 번째 셀이 순위(숫자)인지 확인
     const rankText = cells[0]?.textContent?.trim()
     const rank = parseInt(rankText, 10)
     if (isNaN(rank) || rank < 1 || rank > 10) return
 
-    // 두 번째 셀이 팀명
     const teamName = cells[1]?.textContent?.trim()
     const teamId = KBO_TEAM_MAP[teamName]
     if (!teamId) return
@@ -77,19 +72,18 @@ async function fetchKboStandings() {
       teamName,
       games: cells[2]?.textContent?.trim() || '-',
       wins: cells[3]?.textContent?.trim() || '-',
-      draws: cells[4]?.textContent?.trim() || '-',
-      losses: cells[5]?.textContent?.trim() || '-',
+      losses: cells[4]?.textContent?.trim() || '-',
+      draws: cells[5]?.textContent?.trim() || '-',
       pct: cells[6]?.textContent?.trim() || '-',
       gb: cells[7]?.textContent?.trim() || '-',
     })
   })
 
-  // 순위순으로 정렬
   standings.sort((a, b) => a.rank - b.rank)
   return standings
 }
 
-// 파싱 실패 시 사용할 목업 데이터 (실제 순위를 불러오지 못했을 때 표시)
+// 파싱 실패 시 사용할 목업 데이터
 const MOCK_STANDINGS = [
   { rank: 1,  teamId: 'KIA', teamName: 'KIA',  games: '-', wins: '-', draws: '-', losses: '-', pct: '-', gb: '-' },
   { rank: 2,  teamId: 'LG',  teamName: 'LG',   games: '-', wins: '-', draws: '-', losses: '-', pct: '-', gb: '-' },
@@ -103,11 +97,13 @@ const MOCK_STANDINGS = [
   { rank: 10, teamId: 'WO',  teamName: '키움',  games: '-', wins: '-', draws: '-', losses: '-', pct: '-', gb: '-' },
 ]
 
-export default function KboStandings() {
+// prop: myTeam (선택된 팀 ID), onMyTeamChange (팀 ID => void)
+export default function KboStandings({ myTeam, onMyTeamChange }) {
   const [standings, setStandings] = useState([])
   const [loading, setLoading] = useState(true)
   const [isMock, setIsMock] = useState(false)
   const [lastUpdated, setLastUpdated] = useState('')
+  const [tooltip, setTooltip] = useState(null) // 선택 안내 툴팁
 
   useEffect(() => {
     let cancelled = false
@@ -120,7 +116,6 @@ export default function KboStandings() {
           setStandings(data)
           setIsMock(false)
         } else {
-          // 파싱 결과가 부족하면 목업 사용
           setStandings(MOCK_STANDINGS)
           setIsMock(true)
         }
@@ -144,6 +139,14 @@ export default function KboStandings() {
     return () => { cancelled = true }
   }, [])
 
+  function handleRowClick(teamId) {
+    if (!onMyTeamChange) return
+    const newTeam = teamId === myTeam ? null : teamId // 같은 팀 클릭 시 해제
+    onMyTeamChange(newTeam)
+    setTooltip(newTeam ? `⭐ ${teamId} 팀이 내 팀으로 설정되었습니다!` : '내 팀 설정이 해제되었습니다.')
+    setTimeout(() => setTooltip(null), 2200)
+  }
+
   return (
     <aside className="kbo-standings-widget">
       {/* 헤더 */}
@@ -159,6 +162,23 @@ export default function KboStandings() {
           <span className="standings-updated">기준 {lastUpdated}</span>
         )}
       </div>
+
+      {/* My Team 안내 배너 */}
+      <div className="standings-my-team-hint">
+        {myTeam ? (
+          <span>
+            <span style={{ color: TEAM_COLORS[myTeam] }}>⭐</span>{' '}
+            <strong>{myTeam}</strong> 팀 응원 중 · 행을 클릭해 변경
+          </span>
+        ) : (
+          <span>👆 팀 행을 클릭해 내 팀을 설정하세요</span>
+        )}
+      </div>
+
+      {/* 툴팁 토스트 */}
+      {tooltip && (
+        <div className="standings-toast">{tooltip}</div>
+      )}
 
       {/* 컬럼 헤더 */}
       <div className="standings-col-header">
@@ -183,14 +203,29 @@ export default function KboStandings() {
             const logo = TEAM_LOGO[team.teamId]
             const color = TEAM_COLORS[team.teamId] || '#e94560'
             const isTop5 = team.rank <= 5
+            const isMyTeam = team.teamId === myTeam
             return (
               <div
                 key={team.teamId}
-                className={`standings-row ${isTop5 ? 'standings-row--playoff' : ''}`}
-                style={{ '--team-color': color }}
+                className={[
+                  'standings-row',
+                  isTop5 ? 'standings-row--playoff' : '',
+                  isMyTeam ? 'standings-row--my-team' : '',
+                  onMyTeamChange ? 'standings-row--clickable' : '',
+                ].join(' ')}
+                style={{
+                  '--team-color': color,
+                  ...(isMyTeam
+                    ? { background: `${color}18`, borderLeft: `3px solid ${color}` }
+                    : {}),
+                }}
+                onClick={() => handleRowClick(team.teamId)}
+                title={onMyTeamChange ? (isMyTeam ? '클릭해서 해제' : '클릭해서 내 팀으로 설정') : undefined}
               >
                 <span className="col-rank">
-                  {team.rank <= 3 ? (
+                  {isMyTeam ? (
+                    <span className="rank-my-team-star">⭐</span>
+                  ) : team.rank <= 3 ? (
                     <span className="rank-medal">
                       {team.rank === 1 ? '🥇' : team.rank === 2 ? '🥈' : '🥉'}
                     </span>
@@ -209,7 +244,12 @@ export default function KboStandings() {
                       style={{ background: color + '18' }}
                     />
                   )}
-                  <span className="standings-team-name">{team.teamName}</span>
+                  <span
+                    className="standings-team-name"
+                    style={isMyTeam ? { color, fontWeight: 800 } : {}}
+                  >
+                    {team.teamName}
+                  </span>
                 </span>
                 <span className="col-num">{team.games}</span>
                 <span className="col-num standings-wins">{team.wins}</span>
@@ -226,6 +266,12 @@ export default function KboStandings() {
       <div className="standings-legend">
         <span className="legend-dot playoff" />
         <span>포스트시즌 진출권 (1~5위)</span>
+        {myTeam && (
+          <>
+            <span className="legend-dot" style={{ background: TEAM_COLORS[myTeam], marginLeft: 8 }} />
+            <span>내 팀</span>
+          </>
+        )}
       </div>
 
       {/* KBO 바로가기 */}
