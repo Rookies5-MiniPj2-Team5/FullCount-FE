@@ -20,7 +20,7 @@ const NAV_ITEMS = [
 
 export default function App() {
   const { user, loading } = useAuth();
-  const [tab, setTab] = useState('meetup')
+  const [tab, setTab] = useState('home')
   const [selectedPostId, setSelectedPostId] = useState(null)
   const [authMode, setAuthMode] = useState('login'); // 'login' | 'signup'
 
@@ -41,7 +41,9 @@ export default function App() {
 
   const renderPage = () => {
     switch (tab) {
-      case 'home': return <HomePage onNavigate={(t) => setTab(t)} />
+      case 'home': return selectedPostId
+        ? <MeetupDetailPage postId={selectedPostId} onBack={() => setSelectedPostId(null)} />
+        : <HomePage onNavigate={(t) => setTab(t)} onSelectPost={(id) => setSelectedPostId(id)} />
       case 'schedule': return <SchedulePage />
       case 'meetup': return selectedPostId
         ? <MeetupDetailPage postId={selectedPostId} onBack={() => setSelectedPostId(null)} />

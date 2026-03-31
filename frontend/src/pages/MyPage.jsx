@@ -69,7 +69,9 @@ export default function MyPage() {
             )}
             
             <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+              {/* teamId 대신 백엔드에서 준 teamShortName을 전달해야 로고가 뜹니다 */}
               <TeamBadge teamId={user.teamShortName || 'LG'} />
+              <span style={{ fontSize: 14, color: '#666' }}>{user.teamName} 팬</span>
             </div>
           </div>
         </div>
@@ -86,11 +88,15 @@ export default function MyPage() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
           <div className="my-stat-item" style={{ padding: 16, background: '#fff', borderRadius: 8, boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
             <div className="my-stat-label" style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>🔥 매너 온도</div>
-            <div className="my-stat-value" style={{ fontSize: 18, fontWeight: 700 }}>{user.mannerTemperature?.toFixed(1)}°</div>
+            <div className="my-stat-value" style={{ fontSize: 18, fontWeight: 700 }}>
+              {user.mannerTemperature?.toFixed(1) ?? '36.5'}°
+            </div>
           </div>
           <div className="my-stat-item" style={{ padding: 16, background: '#fff', borderRadius: 8, boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
             <div className="my-stat-label" style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>🏆 뱃지 등급</div>
-            <div className="my-stat-value" style={{ fontSize: 18, fontWeight: 700, color: '#0d6efd' }}>{user.badgeLevel}</div>
+            <div className="my-stat-value" style={{ fontSize: 18, fontWeight: 700, color: '#0d6efd' }}>
+              {user.badgeLevel ?? 'ROOKIE'}
+            </div>
           </div>
         </div>
       </div>

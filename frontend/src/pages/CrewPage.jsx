@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { TeamBadge } from '../components/TeamComponents'
+import CreateCrewModal from '../components/CreateCrewModal'
 
 const CREWS = [
   {
@@ -29,6 +31,17 @@ const CREWS = [
 ]
 
 export default function CrewPage() {
+  const [isModalOpen, setIsModalOpen] = useState(false)
+
+  const handleCreate = async (formData) => {
+    try {
+      // TODO: BE 연동 시 실제 API 호출로 교체
+      alert('크루가 생성되었습니다!')
+      setIsModalOpen(false)
+    } catch (error) {
+      alert('크루 생성에 실패했습니다.')
+    }
+  }
   return (
     <div className="crew-page">
       <div className="page-header">
@@ -58,7 +71,14 @@ export default function CrewPage() {
         </div>
       </div>
 
-      <button className="fab">➕</button>
+      <button className="fab" onClick={() => setIsModalOpen(true)}>➕</button>
+
+      {isModalOpen && (
+        <CreateCrewModal
+          onClose={() => setIsModalOpen(false)}
+          onSubmit={handleCreate}
+        />
+      )}
     </div>
   )
 }
