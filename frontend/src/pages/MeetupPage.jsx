@@ -1,10 +1,9 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { TeamFilter, TEAMS } from '../components/TeamComponents'
 import { StatusBadge } from "../components/StatusBadge"
 import api from '../api/api'
 
-// 팀별 컬러 정의 (디자인 포인트)
 const TEAM_COLORS = {
   "두산": "#1a1748", "LG": "#C8102E", "SSG": "#CE0E2D",
   "키움": "#820024", "KT": "#1b1a1a", "삼성": "#074CA1",
@@ -12,39 +11,46 @@ const TEAM_COLORS = {
   "KIA": "#EA0029",
 };
 
-// ─── 컴포넌트: 모집 카드 ───────────────────────────────────────────
+// 팀 코드 → BE teamId 매핑 (설계서 기준 숫자 ID)
+const TEAM_CODE_MAP = {
+  LG: 1, DU: 2, SSG: 3, KIA: 4, SA: 5,
+  LO: 6, HH: 7, KT: 8, NC: 9, WO: 10,
+};
+
+// === DEBUG: 더미 데이터 (API 연동 전 확인용) ===
+const MEETUP_DUMMY = [
+  { id: 1, authorNickname: "야구팬1", title: "잠실 LG vs 두산 같이 보실 분!", content: "응원해요!", status: "OPEN", supportTeamName: "LG 트윈스", homeTeamName: "LG", awayTeamName: "DU", maxParticipants: 4, currentParticipants: 2, stadium: "잠실야구장", matchDate: "2026-04-05" },
+  { id: 2, authorNickname: "트윈스킹", title: "LG 홈경기 직관 (마감)", content: "마감!", status: "OPEN", supportTeamName: "LG 트윈스", homeTeamName: "LG", awayTeamName: "KT", maxParticipants: 2, currentParticipants: 2, stadium: "잠실야구장", matchDate: "2026-04-07" },
+  { id: 3, authorNickname: "곰팬이에요", title: "두산 개막전 직관!", content: "곰팬 모여라", status: "OPEN", supportTeamName: "두산 베어스", homeTeamName: "DU", awayTeamName: "SSG", maxParticipants: 5, currentParticipants: 1, stadium: "잠실야구장", matchDate: "2026-04-05" },
+];
+
 function MeetupCard({ post, user, onClick, onDelete }) {
-  const color = TEAM_COLORS[post.teamName] || "#ef4b5f";
-  const isFull = (post.currentCount || 0) >= (post.maxParticipants || 1);
-  const ratio = (post.currentCount || 0) / (post.maxParticipants || 1);
+  const displayTeam = post.supportTeamName || post.homeTeamName || "기타";
+  const teamKey = displayTeam.split(' ')[0];
+  const color = TEAM_COLORS[teamKey] || "#ef4b5f";
+  const isFull = (post.currentParticipants || 0) >= (post.maxParticipants || 1);
+  const ratio = (post.currentParticipants || 0) / (post.maxParticipants || 1);
 
   return (
-    <div
-      className="card"
-      onClick={() => onClick(post.id)}
-      style={{
-        cursor: "pointer", overflow: "hidden", padding: 0, backgroundColor: '#fff',
-        borderRadius: '16px', border: '1px solid #eee', boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
-      }}
-    >
+    <div className="card" onClick={() => onClick(post.id)} style={{ cursor: "pointer", overflow: "hidden", padding: 0, backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #eee', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
       <div style={{ height: 4, background: color }} />
       <div style={{ padding: "20px" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-          <span style={{ fontSize: '11px', fontWeight: '800', color: color, background: color + "15", border: `1px solid ${color}30`, padding: "4px 10px", borderRadius: '12px' }}>
-            {post.teamName}
+          <span style={{ fontSize: '11px', fontWeight: '800', color, background: color + "15", border: `1px solid ${color}30`, padding: "4px 10px", borderRadius: '12px' }}>
+            {displayTeam}
           </span>
           <StatusBadge status={post.status} />
         </div>
         <div style={{ marginBottom: 10, fontSize: '16px', fontWeight: '800', color: '#222' }}>{post.title}</div>
         <div style={{ marginBottom: 16, display: 'flex', gap: 10, fontSize: '12px', color: '#999' }}>
-          <span>🏟️ {post.stadium}</span>
+          <span>🏟️ {post.stadium || "경기장 미정"}</span>
           <span>📅 {post.matchDate}</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
           <div style={{ flex: 1, height: 4, background: "#f5f5f5", borderRadius: 999, overflow: "hidden" }}>
             <div style={{ height: "100%", width: `${ratio * 100}%`, background: isFull ? "#ccc" : color, borderRadius: 999, transition: "width 0.3s ease" }} />
           </div>
-          <span style={{ fontSize: 12, color: "#666", fontWeight: 700 }}>👤 {post.currentCount}/{post.maxParticipants}명</span>
+          <span style={{ fontSize: 12, color: "#666", fontWeight: 700 }}>👤 {post.currentParticipants}/{post.maxParticipants}명</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -62,74 +68,88 @@ function MeetupCard({ post, user, onClick, onDelete }) {
   );
 }
 
-// ─── 메인 페이지 컴포넌트 ────────────────────────────────────────────
 export default function MeetupPage({ onSelectPost, initialOpen }) {
   const { user } = useAuth();
   const [posts, setPosts] = useState([]);
   const [filterTeam, setFilterTeam] = useState('ALL');
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [isModalOpen, setIsModalOpen] = useState(initialOpen || false);
-  const [loading, setLoading] = useState(true);
-
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({ title: '', content: '', matchDate: '', homeTeamId: '', awayTeamId: '', maxParticipants: 2 });
 
-  // API 서버 데이터 로드
-  useEffect(() => {
-    const fetchPosts = async () => {
-      setLoading(true);
-      try {
-        const response = await api.get('/api/posts?boardType=MEETUP'); // MEETUP 필터링
-        const responseData = response.data;
-        
-        // GlobalResponseAdvice 래핑 및 PagedResponse 처리
-        let postsArray = [];
-        if (responseData?.success && responseData?.data?.content) {
-            postsArray = responseData.data.content;
-        } else if (responseData?.content) {
-            postsArray = responseData.content;
-        } else if (Array.isArray(responseData)) {
-            postsArray = responseData;
-        } else if (responseData?.success && Array.isArray(responseData?.data)) {
-            postsArray = responseData.data;
-        }
-        
-        setPosts(postsArray);
-      } catch (error) {
-        console.error("데이터 로드 실패:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchPosts();
-  }, []);
+  const fetchMates = async () => {
+    setLoading(true);
+    try {
+      const teamId = filterTeam === 'ALL' ? null : TEAM_CODE_MAP[filterTeam];
+      const status = filterStatus === 'OPEN' ? 'OPEN' : null;
 
-  const filtered = useMemo(() => {
-    const safePosts = Array.isArray(posts) ? posts : [];
-    return safePosts.filter(p => {
-      const teamMatch = filterTeam === 'ALL' || p.homeTeamName === filterTeam || p.awayTeamName === filterTeam || p.teamName === filterTeam;
-      const statusMatch = filterStatus === 'ALL' || p.status === filterStatus;
-      return teamMatch && statusMatch;
-    });
-  }, [posts, filterTeam, filterStatus]);
+      const response = await api.get('/posts', {
+        params: { boardType: 'MATE', teamId, status, page: 0, size: 9 }
+      });
+
+      const responseData = response.data;
+      let postsArray = [];
+
+      // 팀원이 수정한 GlobalResponseAdvice & PagedResponse 래핑 해제 로직 통합
+      if (responseData?.success && responseData?.data?.content) {
+          postsArray = responseData.data.content;
+      } else if (responseData?.data?.content) {
+          postsArray = responseData.data.content;
+      } else if (responseData?.content) {
+          postsArray = responseData.content;
+      } else if (Array.isArray(responseData?.data)) {
+          postsArray = responseData.data;
+      }
+
+      setPosts(postsArray);
+    } catch (err) {
+      console.error("데이터 로드 실패:", err);
+      setPosts(MEETUP_DUMMY); // 실패 시 더미 데이터 표시
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMates();
+  }, [filterTeam, filterStatus]);
+
+  // 클라이언트 보조 필터
+  const filteredPosts = posts.filter(post => {
+    if (filterTeam !== 'ALL') {
+      const teamName = post.supportTeamName || post.homeTeamName || '';
+      const filterName = TEAMS.find(t => t.id === filterTeam)?.name || '';
+      if (!teamName.includes(filterName)) return false;
+    }
+    if (filterStatus === 'FULL') {
+      if ((post.currentParticipants || 0) < (post.maxParticipants || 1)) return false;
+    }
+    return true;
+  });
 
   const handleDelete = async (postId) => {
     if (!window.confirm('정말 삭제하시겠습니까?')) return;
     try {
-      await api.delete(`/api/posts/${postId}`);
-      setPosts(posts.filter(p => p.id !== postId));
-    } catch (error) { alert('삭제에 실패했습니다.'); }
+      await api.delete(`/posts/${postId}`);
+      fetchMates();
+    } catch (err) {
+      alert("삭제 실패");
+    }
   };
 
   const handleCreate = async (e) => {
     e.preventDefault();
     try {
-      const response = await api.post('/api/posts', formData);
-      // 생성된 응답 객체 래핑 추출 로직
-      const newPost = response.data?.success && response.data?.data ? response.data.data : response.data;
-      setPosts([newPost, ...posts]);
+      await api.post('/posts', {
+        boardType: 'MATE',
+        ...formData
+      });
       setIsModalOpen(false);
+      fetchMates();
       alert('모집글이 등록되었습니다!');
-    } catch (error) { alert('등록 실패!'); }
+    } catch (err) {
+      alert('등록 실패');
+    }
   };
 
   return (
@@ -139,68 +159,60 @@ export default function MeetupPage({ onSelectPost, initialOpen }) {
         <p className="page-subtitle">함께 야구장에 갈 직관 메이트를 찾아보세요!</p>
       </div>
 
-      {/* 필터 섹션 */}
       <div style={{ background: '#fff', padding: '20px 24px', borderRadius: '12px', marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '16px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
         <TeamFilter selected={filterTeam} onChange={setFilterTeam} />
         <div style={{ display: 'flex', gap: '8px' }}>
-          {["ALL", "OPEN", "FULL"].map((id) => (
+          {[{ id: "ALL", label: "전체 상태" }, { id: "OPEN", label: "모집 중" }, { id: "FULL", label: "마감" }].map(({ id, label }) => (
             <button key={id} onClick={() => setFilterStatus(id)} style={{ padding: "6px 14px", fontSize: "13px", fontWeight: "500", borderRadius: "18px", cursor: "pointer", border: filterStatus === id ? "none" : "1px solid #eee", backgroundColor: filterStatus === id ? "#ef4b5f" : "#fff", color: filterStatus === id ? "#fff" : "#666" }}>
-              {id === "ALL" ? "전체 상태" : id === "OPEN" ? "모집 중" : "마감"}
+              {label}
             </button>
           ))}
         </div>
       </div>
 
-      {/* 카드 그리드 */}
       <div className="page-content">
-        <div className="card-grid">
-          {filtered.map(post => (
-            <MeetupCard key={post.id} post={post} user={user} onClick={onSelectPost} onDelete={handleDelete} />
-          ))}
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '40px' }}>로딩 중...</div>
+        ) : (
+          <div className="card-grid">
+            <div onClick={() => setIsModalOpen(true)} style={{ cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "220px", borderRadius: '16px', border: '2px dashed #ddd', backgroundColor: '#f9f9f9', transition: 'all 0.2s ease' }} onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#ef4b5f'; e.currentTarget.style.backgroundColor = '#fff5f6'; }} onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#ddd'; e.currentTarget.style.backgroundColor = '#f9f9f9'; }}>
+              <div style={{ fontSize: '40px', color: '#ef4b5f', marginBottom: '8px' }}>+</div>
+              <div style={{ fontSize: '14px', fontWeight: '700', color: '#888' }}>새 모집글 작성</div>
+            </div>
 
-          {/* ✅ 카드 형태의 새 글 작성 버튼 (CrewPage와 통일) */}
-          <div 
-            onClick={() => setIsModalOpen(true)}
-            style={{
-              cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-              minHeight: "220px", borderRadius: '16px', border: '2px dashed #ddd', backgroundColor: '#f9f9f9', transition: 'all 0.2s ease'
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#ef4b5f'; e.currentTarget.style.backgroundColor = '#fff5f6'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#ddd'; e.currentTarget.style.backgroundColor = '#f9f9f9'; }}
-          >
-            <div style={{ fontSize: '40px', color: '#ef4b5f', marginBottom: '8px' }}>+</div>
-            <div style={{ fontSize: '14px', fontWeight: '700', color: '#888' }}>새 모집글 작성</div>
+            {filteredPosts.map(post => (
+              <MeetupCard key={post.id} post={post} user={user} onClick={onSelectPost} onDelete={handleDelete} />
+            ))}
           </div>
-        </div>
+        )}
       </div>
 
-      {/* 모달 영역 */}
       {isModalOpen && (
-        <div className="modal-overlay" onClick={() => setIsModalOpen(false)} style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 400, padding: 24 }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }} onClick={() => setIsModalOpen(false)}>
+          <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 400, padding: 24 }} onClick={e => e.stopPropagation()}>
             <h3 style={{ marginBottom: 20 }}>직관 메이트 모집</h3>
             <form onSubmit={handleCreate}>
-              <input placeholder="제목" style={{ width: '100%', marginBottom: 12, borderRadius: 8, padding: 10, border: '1px solid #ddd' }} value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} required />
-              <textarea placeholder="내용" style={{ width: '100%', height: 100, marginBottom: 12, borderRadius: 8, padding: 10, border: '1px solid #ddd' }} value={formData.content} onChange={e => setFormData({ ...formData, content: e.target.value })} required />
+              <input placeholder="제목" style={{ width: '100%', marginBottom: 12, borderRadius: 10, padding: 10, border: '1px solid #ddd', boxSizing: 'border-box' }} value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} required />
+              <textarea placeholder="내용" style={{ width: '100%', height: 100, marginBottom: 12, borderRadius: 10, padding: 10, border: '1px solid #ddd', boxSizing: 'border-box', resize: 'none' }} value={formData.content} onChange={e => setFormData({ ...formData, content: e.target.value })} required />
               <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-                <select style={{ flex: 1, padding: 8, borderRadius: 8, border: '1px solid #ddd' }} value={formData.homeTeamId} onChange={e => setFormData({ ...formData, homeTeamId: e.target.value })} required>
+                <select style={{ flex: 1, padding: 8, borderRadius: 10, border: '1px solid #ddd' }} value={formData.homeTeamId} onChange={e => setFormData({ ...formData, homeTeamId: e.target.value })} required>
                   <option value="">홈 팀</option>
-                  {TEAMS.filter(t => t.id !== 'ALL').map((t, i) => <option key={t.id} value={i + 1}>{t.name}</option>)}
+                  {TEAMS.filter(t => t.id !== 'ALL').map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
-                <select style={{ flex: 1, padding: 8, borderRadius: 8, border: '1px solid #ddd' }} value={formData.awayTeamId} onChange={e => setFormData({ ...formData, awayTeamId: e.target.value })} required>
+                <select style={{ flex: 1, padding: 8, borderRadius: 10, border: '1px solid #ddd' }} value={formData.awayTeamId} onChange={e => setFormData({ ...formData, awayTeamId: e.target.value })} required>
                   <option value="">어웨이</option>
-                  {TEAMS.filter(t => t.id !== 'ALL').map((t, i) => <option key={t.id} value={i + 1}>{t.name}</option>)}
+                  {TEAMS.filter(t => t.id !== 'ALL').map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
               </div>
-              <input type="date" style={{ width: '100%', marginBottom: 20, padding: 8, borderRadius: 8, border: '1px solid #ddd' }} value={formData.matchDate} onChange={e => setFormData({ ...formData, matchDate: e.target.value })} required />
+              <input type="date" style={{ width: '100%', marginBottom: 20, padding: 8, borderRadius: 10, border: '1px solid #ddd', boxSizing: 'border-box' }} value={formData.matchDate} onChange={e => setFormData({ ...formData, matchDate: e.target.value })} required />
               <div style={{ display: 'flex', gap: 10 }}>
-                <button type="submit" style={{ flex: 1, padding: 12, background: '#ef4b5f', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, cursor: 'pointer' }}>등록</button>
-                <button type="button" onClick={() => setIsModalOpen(false)} style={{ flex: 1, padding: 12, background: '#eee', border: 'none', borderRadius: 8, cursor: 'pointer' }}>취소</button>
+                <button type="submit" style={{ flex: 1, padding: 12, background: '#ef4b5f', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, cursor: 'pointer' }}>등록</button>
+                <button type="button" onClick={() => setIsModalOpen(false)} style={{ flex: 1, padding: 12, background: '#eee', border: 'none', borderRadius: 10, cursor: 'pointer' }}>취소</button>
               </div>
             </form>
           </div>
         </div>
       )}
     </div>
-  )
+  );
 }
