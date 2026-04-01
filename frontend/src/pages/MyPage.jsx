@@ -56,7 +56,13 @@ export default function MyPage() {
     }
   }, [user]);
 
-  if (!user) return <div className="loading">사용자 정보를 불러오는 중입니다...</div>;
+  if (!user) return (
+    <div className="empty-state">
+      <div className="empty-icon">🔒</div>
+      <p>로그인이 필요합니다.</p>
+      <p style={{ fontSize: 12, color: '#999', marginTop: 8 }}>홈 화면 우측의 로그인 폼을 이용해주세요.</p>
+    </div>
+  );
 
   // 1. 닉네임 수정 API 호출
   const handleUpdateNickname = async () => {

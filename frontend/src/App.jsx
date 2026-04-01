@@ -6,7 +6,6 @@ import CrewPage from './pages/CrewPage'
 import MyPage from './pages/MyPage'
 import SchedulePage from './pages/SchedulePage'
 import HomePage from './pages/HomePage'
-import LoginPage from './pages/LoginPage'
 import SignupPage from './pages/SignupPage'
 import ChatPage from './pages/ChatPage'
 import ChatFab from './components/ChatFab'
@@ -22,9 +21,8 @@ const NAV_ITEMS = [
 
 export default function App() {
   const { user, loading } = useAuth()
-  const [tab, setTab] = useState('meetup')
+  const [tab, setTab] = useState('home')
   const [selectedPostId, setSelectedPostId] = useState(null)
-  const [authMode, setAuthMode] = useState('login') // 'login' | 'signup'
   const [chatRoom, setChatRoom] = useState(null)
   
 
@@ -36,14 +34,19 @@ export default function App() {
     )
   }
 
-  // 로그인하지 않은 경우
-  if (!user) {
-    return authMode === 'login'
-      ? <LoginPage onSwitchToSignup={() => setAuthMode('signup')} />
-      : <SignupPage onSwitchToLogin={() => setAuthMode('login')} />
+  // 로그인 필요한 탭을 클릭했을 때 홈으로 돌려보내는 안전 핸들러
+  const handleTabChange = (newTab) => {
+    const PROTECTED_TABS = ['my', 'meetup-create'];
+    if (PROTECTED_TABS.includes(newTab) && !user) {
+      alert('로그인이 필요합니다. 홈 화면의 로그인 폼을 이용해주세요.');
+      setTab('home');
+      return;
+    }
+    setSelectedPostId(null);
+    setTab(newTab);
   }
 
-  // hatFab에서 채팅방 클릭 시 호출
+  // ChatFab에서 채팅방 클릭 시 호출
   const handleOpenChat = (room) => {
     setChatRoom(room)
   }
@@ -58,7 +61,7 @@ export default function App() {
       case 'home':
         return selectedPostId
           ? <MeetupDetailPage postId={selectedPostId} onBack={() => setSelectedPostId(null)} />
-          : <HomePage onNavigate={(t) => setTab(t)} onSelectPost={(id) => setSelectedPostId(id)} />;
+          : <HomePage onNavigate={(t) => handleTabChange(t)} onSelectPost={(id) => setSelectedPostId(id)} />;
 
       case 'schedule':
         return <SchedulePage />;
@@ -79,6 +82,9 @@ export default function App() {
       case 'my':
         return <MyPage />;
 
+      case 'signup':
+        return <SignupPage onSwitchToLogin={() => setTab('home')} />;
+
       default:
         return <MeetupPage onSelectPost={(id) => setSelectedPostId(id)} />;
     }
@@ -97,7 +103,7 @@ export default function App() {
               <button
                 key={item.id}
                 className={`nav-item ${tab === item.id ? 'active' : ''}`}
-                onClick={() => setTab(item.id)}
+                onClick={() => handleTabChange(item.id)}
               >
                 <span className="nav-icon">{item.icon}</span>
                 <span className="nav-label">{item.label}</span>
