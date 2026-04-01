@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { TeamBadge } from '../components/TeamComponents'
 import KboStandings from '../components/KboStandings'
 import TodaysGame from '../components/TodaysGame'
+import LoginCard from '../components/LoginCard'
 import stadiumBg from '../assets/stadium_hero.png'
 
 // status: 'recruiting' | 'closed' | 'urgent'
@@ -135,8 +136,11 @@ export default function HomePage({ onNavigate }) {
           </div>
         </div>
 
-        {/* ── 오른쪽: KBO 순위 (My Team 연동) ── */}
-        <KboStandings myTeam={myTeam} onMyTeamChange={handleMyTeamChange} />
+        {/* ── 오른쪽: 로그인 및 KBO 순위 (My Team 연동) ── */}
+        <div className="home-sidebar">
+          <LoginCard onNavigate={onNavigate} />
+          <KboStandings myTeam={myTeam} onMyTeamChange={handleMyTeamChange} />
+        </div>
       </div>
     </div>
   )

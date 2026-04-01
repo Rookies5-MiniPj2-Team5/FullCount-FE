@@ -611,14 +611,283 @@ body {
   50%       { box-shadow: 0 0 0 5px rgba(224, 112, 32, 0); }
 }
 
+/* ===== 홈 사이드바 ===== */
+.home-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  position: sticky;
+  top: 88px;
+}
+
+/* ===== 로그인 위젯 (Fan ID Card) ===== */
+.login-widget {
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.04);
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+  transition: box-shadow 0.3s ease, transform 0.3s ease, opacity 0.3s ease;
+  animation: fanCardIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.login-widget:hover {
+  box-shadow: 0 8px 30px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.06);
+}
+
+/* exit animation class */
+.login-widget--exit {
+  animation: fanCardOut 0.25s ease forwards;
+}
+
+@keyframes fanCardIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes fanCardOut {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to   { opacity: 0; transform: translateY(-8px) scale(0.97); }
+}
+
+/* ── Fan card top accent bar ── */
+.fan-card-accent {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  border-radius: 20px 20px 0 0;
+}
+
+/* ── Login header (logged-out state) ── */
+.login-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #f0f0f0;
+}
+.login-header-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+.login-header-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: #1a1a1a;
+  letter-spacing: 0.04em;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.login-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.login-input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+  background-color: #fff;
+  background-size: 60px 60px;
+}
+.login-input--stitch {
+  background-repeat: repeat;
+  background-position: center;
+}
+.login-input:focus {
+  border-color: #e94560;
+  box-shadow: 0 0 0 3px rgba(233, 69, 96, 0.08);
+}
+
+.login-error {
+  color: #e94560;
+  font-size: 12px;
+  margin-top: -2px;
+  font-weight: 500;
+}
+
+.login-btn-submit {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, #e94560 0%, #d43650 100%);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 4px 14px rgba(233, 69, 96, 0.25);
+}
+.login-btn-submit:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(233, 69, 96, 0.35);
+}
+.login-btn-submit:active {
+  transform: translateY(0);
+}
+
+.login-links {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #666;
+}
+.login-links a {
+  color: #666;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.login-links a:hover {
+  color: #e94560;
+  text-decoration: underline;
+}
+
+.login-divider {
+  color: #ccc;
+}
+
+/* ── CTA text below form ── */
+.login-cta-text {
+  margin: 6px 0 0;
+  padding: 10px 12px;
+  background: #fef6f0;
+  border-radius: 10px;
+  font-size: 11.5px;
+  color: #b06030;
+  line-height: 1.55;
+  text-align: center;
+  border: 1px dashed #f0d0b0;
+}
+
+/* ── Profile (logged-in) ── */
+.login-profile {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding-top: 6px;         /* offset for accent bar */
+}
+
+.login-profile-info {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+/* Fan avatar ring */
+.fan-avatar-ring {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  border: 2.5px solid;
+  padding: 3px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+  transition: transform 0.3s ease;
+}
+.fan-avatar-ring:hover {
+  transform: scale(1.08) rotate(3deg);
+}
+.fan-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: contain;
+}
+
+/* fallback avatar */
+.login-avatar {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: #1a2a4a;
+  color: #fff;
+  font-size: 22px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.login-welcome {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.login-greeting {
+  font-size: 12px;
+  color: #888;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.login-username {
+  font-size: 17px;
+  color: #1a1a1a;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+.fan-cheer {
+  font-size: 11.5px;
+  font-weight: 500;
+  margin-top: 2px;
+  line-height: 1.4;
+}
+.fan-cheer strong {
+  font-weight: 700;
+}
+
+/* ── Ghost logout button ── */
+.login-btn-logout {
+  width: 100%;
+  padding: 10px;
+  background: transparent;
+  color: #888;
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+.login-btn-logout--ghost {
+  background: transparent;
+}
+.login-btn-logout:hover {
+  background: rgba(0,0,0,0.03);
+  border-color: #ccc;
+}
+
 /* ===== KBO 순위 위젯 ===== */
 .kbo-standings-widget {
   background: #fff;
   border-radius: 16px;
   box-shadow: 0 2px 12px rgba(0,0,0,0.07);
   overflow: hidden;
-  position: sticky;
-  top: 88px;  /* header 높이 + 여백 */
 }
 
 .standings-header {
