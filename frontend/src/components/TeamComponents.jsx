@@ -1,16 +1,16 @@
 // 팀 색상 클래스 매핑
 export const TEAMS = [
   { id: 'ALL', name: '전체' },
-  { id: 'LG',  name: 'LG' },
-  { id: 'DU',  name: '두산' },
+  { id: 'LG', name: 'LG' },
+  { id: 'DU', name: '두산' },
   { id: 'SSG', name: 'SSG' },
   { id: 'KIA', name: 'KIA' },
-  { id: 'SA',  name: '삼성' },
-  { id: 'LO',  name: '롯데' },
-  { id: 'HH',  name: '한화' },
-  { id: 'KT',  name: 'KT' },
-  { id: 'NC',  name: 'NC' },
-  { id: 'WO',  name: '키움' },
+  { id: 'SA', name: '삼성' },
+  { id: 'LO', name: '롯데' },
+  { id: 'HH', name: '한화' },
+  { id: 'KT', name: 'KT' },
+  { id: 'NC', name: 'NC' },
+  { id: 'WO', name: '키움' },
 ]
 
 export const TEAM_NAME = {
@@ -20,16 +20,16 @@ export const TEAM_NAME = {
 
 // 팀 ID → 로고 이미지 파일명 매핑
 export const TEAM_LOGO = {
-  LG:  '/LG.png',
-  DU:  '/두산.png',
+  LG: '/LG.png',
+  DU: '/두산.png',
   SSG: '/SK.png',
   KIA: '/기아.png',
-  SA:  '/SS.png',
-  LO:  '/롯데.png',
-  HH:  '/HH.png',
-  KT:  '/KT.png',
-  NC:  '/NC.png',
-  WO:  '/키움.png',
+  SA: '/SS.png',
+  LO: '/롯데.png',
+  HH: '/HH.png',
+  KT: '/KT.png',
+  NC: '/NC.png',
+  WO: '/키움.png',
 }
 
 export function TeamBadge({ teamId }) {

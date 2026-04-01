@@ -1,19 +1,6 @@
 import { useState, useEffect } from 'react'
-import { TEAM_LOGO } from './TeamComponents'
-
-// KBO 공식 팀명 → 내부 팀 ID 매핑
-const KBO_TEAM_MAP = {
-  'LG':   'LG',
-  '두산':  'DU',
-  'SSG':  'SSG',
-  'KIA':  'KIA',
-  '삼성':  'SA',
-  '롯데':  'LO',
-  '한화':  'HH',
-  'KT':   'KT',
-  'NC':   'NC',
-  '키움':  'WO',
-}
+import { TEAM_LOGO, TEAM_NAME } from './TeamComponents'
+import api from '../api/api'
 
 // 팀 색상
 const TEAM_COLORS = {
@@ -22,79 +9,37 @@ const TEAM_COLORS = {
   NC: '#315288', WO: '#570514',
 }
 
-// KBO 공식 홈페이지 순위 HTML 파싱
+// 백엔드 자체 API 호출 (프론트엔드 크롤링 제거)
 async function fetchKboStandings() {
-  const res = await fetch(
-    '/kbo-official/Record/TeamRank/TeamRankDaily.aspx',
-    {
-      headers: {
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'ko-KR,ko;q=0.9',
-      },
-    }
-  )
-  if (!res.ok) throw new Error(`fetch failed: ${res.status}`)
-  const html = await res.text()
+  const res = await api.get('/baseball/standings')
+  let data = res.data
 
-  const parser = new DOMParser()
-  const doc = parser.parseFromString(html, 'text/html')
-
-  const tableSelectors = [
-    '#content table tbody tr',
-    'table.tData01 tbody tr',
-    '#tblRecord tbody tr',
-    '.record_list table tbody tr',
-    'table tbody tr',
-  ]
-
-  let rows = []
-  for (const selector of tableSelectors) {
-    rows = doc.querySelectorAll(selector)
-    if (rows.length >= 8) break
+  // GlobalResponseAdvice 래핑 처리
+  if (data?.success && data?.data) {
+    data = data.data
   }
 
-  const standings = []
-  rows.forEach((row) => {
-    const cells = row.querySelectorAll('td')
-    if (cells.length < 7) return
+  // 숫자로 계산되는 rank 필드만 안전하게 Number 캐스팅
+  data = data.map(team => ({
+    ...team,
+    rank: parseInt(team.rank, 10)
+  }))
 
-    const rankText = cells[0]?.textContent?.trim()
-    const rank = parseInt(rankText, 10)
-    if (isNaN(rank) || rank < 1 || rank > 10) return
-
-    const teamName = cells[1]?.textContent?.trim()
-    const teamId = KBO_TEAM_MAP[teamName]
-    if (!teamId) return
-
-    standings.push({
-      rank,
-      teamId,
-      teamName,
-      games: cells[2]?.textContent?.trim() || '-',
-      wins: cells[3]?.textContent?.trim() || '-',
-      losses: cells[4]?.textContent?.trim() || '-',
-      draws: cells[5]?.textContent?.trim() || '-',
-      pct: cells[6]?.textContent?.trim() || '-',
-      gb: cells[7]?.textContent?.trim() || '-',
-    })
-  })
-
-  standings.sort((a, b) => a.rank - b.rank)
-  return standings
+  return data
 }
 
 // 파싱 실패 시 사용할 목업 데이터
 const MOCK_STANDINGS = [
-  { rank: 1,  teamId: 'KIA', teamName: 'KIA',  games: '-', wins: '-', draws: '-', losses: '-', pct: '-', gb: '-' },
-  { rank: 2,  teamId: 'LG',  teamName: 'LG',   games: '-', wins: '-', draws: '-', losses: '-', pct: '-', gb: '-' },
-  { rank: 3,  teamId: 'SA',  teamName: '삼성',  games: '-', wins: '-', draws: '-', losses: '-', pct: '-', gb: '-' },
-  { rank: 4,  teamId: 'SSG', teamName: 'SSG',  games: '-', wins: '-', draws: '-', losses: '-', pct: '-', gb: '-' },
-  { rank: 5,  teamId: 'LO',  teamName: '롯데',  games: '-', wins: '-', draws: '-', losses: '-', pct: '-', gb: '-' },
-  { rank: 6,  teamId: 'KT',  teamName: 'KT',   games: '-', wins: '-', draws: '-', losses: '-', pct: '-', gb: '-' },
-  { rank: 7,  teamId: 'NC',  teamName: 'NC',   games: '-', wins: '-', draws: '-', losses: '-', pct: '-', gb: '-' },
-  { rank: 8,  teamId: 'DU',  teamName: '두산',  games: '-', wins: '-', draws: '-', losses: '-', pct: '-', gb: '-' },
-  { rank: 9,  teamId: 'HH',  teamName: '한화',  games: '-', wins: '-', draws: '-', losses: '-', pct: '-', gb: '-' },
-  { rank: 10, teamId: 'WO',  teamName: '키움',  games: '-', wins: '-', draws: '-', losses: '-', pct: '-', gb: '-' },
+  { rank: 1, teamId: 'KIA', teamName: 'KIA', games: '-', wins: '-', draws: '-', losses: '-', pct: '-', gb: '-' },
+  { rank: 2, teamId: 'LG', teamName: 'LG', games: '-', wins: '-', draws: '-', losses: '-', pct: '-', gb: '-' },
+  { rank: 3, teamId: 'SA', teamName: '삼성', games: '-', wins: '-', draws: '-', losses: '-', pct: '-', gb: '-' },
+  { rank: 4, teamId: 'SSG', teamName: 'SSG', games: '-', wins: '-', draws: '-', losses: '-', pct: '-', gb: '-' },
+  { rank: 5, teamId: 'LO', teamName: '롯데', games: '-', wins: '-', draws: '-', losses: '-', pct: '-', gb: '-' },
+  { rank: 6, teamId: 'KT', teamName: 'KT', games: '-', wins: '-', draws: '-', losses: '-', pct: '-', gb: '-' },
+  { rank: 7, teamId: 'NC', teamName: 'NC', games: '-', wins: '-', draws: '-', losses: '-', pct: '-', gb: '-' },
+  { rank: 8, teamId: 'DU', teamName: '두산', games: '-', wins: '-', draws: '-', losses: '-', pct: '-', gb: '-' },
+  { rank: 9, teamId: 'HH', teamName: '한화', games: '-', wins: '-', draws: '-', losses: '-', pct: '-', gb: '-' },
+  { rank: 10, teamId: 'WO', teamName: '키움', games: '-', wins: '-', draws: '-', losses: '-', pct: '-', gb: '-' },
 ]
 
 // prop: myTeam (선택된 팀 ID), onMyTeamChange (팀 ID => void)
@@ -131,7 +76,7 @@ export default function KboStandings({ myTeam, onMyTeamChange }) {
           setLoading(false)
           const now = new Date()
           setLastUpdated(
-            `${now.getMonth() + 1}/${now.getDate()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`
+            `${now.getMonth() + 1}/${now.getDate()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
           )
         }
       })
@@ -143,7 +88,7 @@ export default function KboStandings({ myTeam, onMyTeamChange }) {
     if (!onMyTeamChange) return
     const newTeam = teamId === myTeam ? null : teamId // 같은 팀 클릭 시 해제
     onMyTeamChange(newTeam)
-    setTooltip(newTeam ? `⭐ ${teamId} 팀이 내 팀으로 설정되었습니다!` : '내 팀 설정이 해제되었습니다.')
+    setTooltip(newTeam ? `⭐ ${TEAM_NAME[teamId] || teamId} 팀이 내 팀으로 설정되었습니다!` : '내 팀 설정이 해제되었습니다.')
     setTimeout(() => setTooltip(null), 2200)
   }
 
@@ -168,7 +113,7 @@ export default function KboStandings({ myTeam, onMyTeamChange }) {
         {myTeam ? (
           <span>
             <span style={{ color: TEAM_COLORS[myTeam] }}>⭐</span>{' '}
-            <strong>{myTeam}</strong> 팀 응원 중 · 행을 클릭해 변경
+            <strong>{TEAM_NAME[myTeam] || myTeam}</strong> 팀 응원 중 · 행을 클릭해 변경
           </span>
         ) : (
           <span>👆 팀 행을 클릭해 내 팀을 설정하세요</span>

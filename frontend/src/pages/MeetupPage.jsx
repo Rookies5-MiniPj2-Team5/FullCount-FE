@@ -78,8 +78,22 @@ export default function MeetupPage({ onSelectPost, initialOpen }) {
     const fetchPosts = async () => {
       setLoading(true);
       try {
-        const response = await api.get('/api/posts'); // BE 엔드포인트에 맞춰 수정
-        setPosts(response.data);
+        const response = await api.get('/api/posts?boardType=MEETUP'); // MEETUP 필터링
+        const responseData = response.data;
+        
+        // GlobalResponseAdvice 래핑 및 PagedResponse 처리
+        let postsArray = [];
+        if (responseData?.success && responseData?.data?.content) {
+            postsArray = responseData.data.content;
+        } else if (responseData?.content) {
+            postsArray = responseData.content;
+        } else if (Array.isArray(responseData)) {
+            postsArray = responseData;
+        } else if (responseData?.success && Array.isArray(responseData?.data)) {
+            postsArray = responseData.data;
+        }
+        
+        setPosts(postsArray);
       } catch (error) {
         console.error("데이터 로드 실패:", error);
       } finally {
@@ -110,7 +124,9 @@ export default function MeetupPage({ onSelectPost, initialOpen }) {
     e.preventDefault();
     try {
       const response = await api.post('/api/posts', formData);
-      setPosts([response.data, ...posts]);
+      // 생성된 응답 객체 래핑 추출 로직
+      const newPost = response.data?.success && response.data?.data ? response.data.data : response.data;
+      setPosts([newPost, ...posts]);
       setIsModalOpen(false);
       alert('모집글이 등록되었습니다!');
     } catch (error) { alert('등록 실패!'); }
