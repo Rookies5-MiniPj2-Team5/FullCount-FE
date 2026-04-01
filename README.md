@@ -29,7 +29,7 @@
 ```powershell
 # 레포지토리 클론
 git clone https://github.com/Rookies5-MiniPj2-Team5/FullCount-FE.git
-cd FullCount-FE
+cd FullCount-FE/frontend
 
 # 의존성 설치
 npm install
