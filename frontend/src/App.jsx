@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from './context/AuthContext'
 import MeetupPage from './pages/MeetupPage'
 import MeetupDetailPage from './pages/MeetupDetailPage'
@@ -24,7 +24,41 @@ export default function App() {
   const [tab, setTab] = useState('home')
   const [selectedPostId, setSelectedPostId] = useState(null)
   const [chatRoom, setChatRoom] = useState(null)
-  
+
+  // 🌟 1. 브라우저 주소창과 React 상태(State) 동기화 (뒤로가기 해결)
+  useEffect(() => {
+    const handlePopState = () => {
+      const searchParams = new URLSearchParams(window.location.search);
+      const urlTab = searchParams.get('tab') || 'home';
+      const urlPostId = searchParams.get('postId');
+
+      setTab(urlTab);
+      setSelectedPostId(urlPostId ? urlPostId : null); 
+    };
+
+    handlePopState();
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // 🌟 2. 상태 변경과 동시에 브라우저 방문 기록(History) 업데이트
+  const navigateTo = (newTab, newPostId = null) => {
+    const searchParams = new URLSearchParams();
+    searchParams.set('tab', newTab);
+    if (newPostId) {
+      searchParams.set('postId', newPostId);
+    }
+
+    const newUrl = `${window.location.pathname}?${searchParams.toString()}`;
+
+    if (window.location.search !== `?${searchParams.toString()}`) {
+      window.history.pushState({}, '', newUrl);
+    }
+
+    setTab(newTab);
+    setSelectedPostId(newPostId);
+  };
 
   if (loading) {
     return (
@@ -34,48 +68,48 @@ export default function App() {
     )
   }
 
-  // 로그인 필요한 탭을 클릭했을 때 홈으로 돌려보내는 안전 핸들러
   const handleTabChange = (newTab) => {
     const PROTECTED_TABS = ['my', 'meetup-create'];
     if (PROTECTED_TABS.includes(newTab) && !user) {
       alert('로그인이 필요합니다. 홈 화면의 로그인 폼을 이용해주세요.');
-      setTab('home');
+      navigateTo('home');
       return;
     }
-    setSelectedPostId(null);
-    setTab(newTab);
+    navigateTo(newTab, null);
   }
 
-  // ChatFab에서 채팅방 클릭 시 호출
   const handleOpenChat = (room) => {
     setChatRoom(room)
   }
 
-  // ChatPage 뒤로가기 시 호출
   const handleCloseChat = () => {
     setChatRoom(null)
   }
 
   const renderPage = () => {
+    // 🌟 3. 보안 게이트키퍼: 로그아웃 상태에서 뒤로가기로 접근하는 것 차단
+    const PROTECTED_TABS = ['my', 'meetup-create'];
+    if (PROTECTED_TABS.includes(tab) && !user) {
+      return <HomePage onNavigate={(t) => handleTabChange(t)} onSelectPost={(id) => navigateTo('home', id)} />;
+    }
+
     switch (tab) {
       case 'home':
         return selectedPostId
-          ? <MeetupDetailPage postId={selectedPostId} onBack={() => setSelectedPostId(null)} />
-          : <HomePage onNavigate={(t) => handleTabChange(t)} onSelectPost={(id) => setSelectedPostId(id)} />;
+          ? <MeetupDetailPage postId={selectedPostId} onBack={() => navigateTo('home')} />
+          : <HomePage onNavigate={(t) => handleTabChange(t)} onSelectPost={(id) => navigateTo('home', id)} />;
 
       case 'schedule':
         return <SchedulePage />;
 
       case 'meetup':
         return selectedPostId
-          ? <MeetupDetailPage postId={selectedPostId} onBack={() => setSelectedPostId(null)} />
-          : <MeetupPage key="meetup" onSelectPost={(id) => setSelectedPostId(id)} />;
+          ? <MeetupDetailPage postId={selectedPostId} onBack={() => navigateTo('meetup')} />
+          : <MeetupPage key="meetup" onSelectPost={(id) => navigateTo('meetup', id)} />;
 
-      // Meetup 생성 모드
       case 'meetup-create':
-        return <MeetupPage key="meetup-create" initialOpen={true} onSelectPost={(id) => setSelectedPostId(id)} />;
+        return <MeetupPage key="meetup-create" initialOpen={true} onSelectPost={(id) => navigateTo('meetup-create', id)} />;
 
-      // CrewPage에 currentUser(user) 데이터 전달 로직 적용
       case 'crew':
         return <CrewPage currentUser={user} />;
 
@@ -83,19 +117,18 @@ export default function App() {
         return <MyPage />;
 
       case 'signup':
-        return <SignupPage onSwitchToLogin={() => setTab('home')} />;
+        return <SignupPage onSwitchToLogin={() => navigateTo('home')} />;
 
       default:
-        return <MeetupPage onSelectPost={(id) => setSelectedPostId(id)} />;
+        return <MeetupPage onSelectPost={(id) => navigateTo('meetup', id)} />;
     }
   };
 
   return (
     <div className="app-layout">
-      {/* 상단 헤더 & 내비게이션 */}
       <header className="app-header">
         <div className="container header-inner">
-          <div className="header-logo" onClick={() => setTab('home')}>
+          <div className="header-logo" onClick={() => navigateTo('home')}>
             <h1><span className="icon">⚾</span> FULL COUNT</h1>
           </div>
           <nav className="nav-list">
@@ -111,7 +144,6 @@ export default function App() {
             ))}
           </nav>
           <div className="header-actions">
-            {/* 알림, 프로필 등 추가 기능 공간 */}
           </div>
         </div>
       </header>
@@ -122,13 +154,11 @@ export default function App() {
         </div>
       </main>
 
-      {/* 채팅 FAB (모든 탭 공통) */}
       <ChatFab
         currentUser={user}
         onOpenChat={handleOpenChat}
       />
 
-      {/* 채팅 팝업 — 기존 페이지 위에 오버레이로 표시 */}
       {chatRoom && (
         <ChatPage
           crew={{ title: chatRoom.title, team: chatRoom.crewTeam }}
