@@ -31,16 +31,28 @@ export default function MyPage() {
   // 팀 변경 State
   const [selectedTeamId, setSelectedTeamId] = useState('');
   
-  // 알림 설정 State (UI 전용)
-  const [alerts, setAlerts] = useState({ chat: true, transfer: true, manner: true });
+  // ⭐️ [수정된 부분] 알림 설정 State (DB에서 가져온 내 설정값으로 초기화)
+  const [alerts, setAlerts] = useState({ 
+    chat: user?.chatAlert ?? true, 
+    transfer: user?.transferAlert ?? true, 
+    manner: user?.mannerAlert ?? true 
+  });
 
-  // ⭐️ 프로필 이미지 & 비밀번호 변경 State
+  // 프로필 이미지 & 비밀번호 변경 State
   const [newImageUrl, setNewImageUrl] = useState('');
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '' });
 
+  // 유저 정보가 바뀔 때 닉네임 및 알림 설정 동기화
   useEffect(() => {
-    if (user?.nickname) {
-      setNewNickname(user.nickname);
+    if (user) {
+      if (user.nickname) setNewNickname(user.nickname);
+      
+      // ⭐️ [추가된 부분] 유저 정보 로드 시 알림 상태 최신화
+      setAlerts({
+        chat: user.chatAlert ?? true,
+        transfer: user.transferAlert ?? true,
+        manner: user.mannerAlert ?? true
+      });
     }
   }, [user]);
 
@@ -74,7 +86,7 @@ export default function MyPage() {
     }
   };
 
-  // 3-1. ⭐️ 내 컴퓨터에서 이미지 파일 선택 시 Base64로 변환하는 함수
+  // 3-1. 내 컴퓨터에서 이미지 파일 선택 시 Base64로 변환하는 함수
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -91,7 +103,7 @@ export default function MyPage() {
     };
   };
 
-  // 3-2. ⭐️ 프로필 이미지 변경 API 호출 (서버로 전송)
+  // 3-2. 프로필 이미지 변경 API 호출 (서버로 전송)
   const handleUpdateProfileImage = async () => {
     if (!newImageUrl.trim()) return alert('이미지를 선택하거나 URL을 입력해주세요.');
     try {
@@ -104,7 +116,7 @@ export default function MyPage() {
     }
   };
 
-  // 4. ⭐️ 비밀번호 변경 API 호출
+  // 4. 비밀번호 변경 API 호출
   const handleUpdatePassword = async () => {
     if (!passwordForm.currentPassword || !passwordForm.newPassword) {
       return alert('현재 비밀번호와 새 비밀번호를 모두 입력해주세요.');
@@ -119,6 +131,27 @@ export default function MyPage() {
     }
   };
 
+  // 5. ⭐️ [추가된 부분] 체크박스를 누를 때마다 즉시 서버로 저장하는 함수
+  const handleToggleAlert = async (type, newValue) => {
+    // 1. 화면의 체크박스를 먼저 즉시 바꿈 (빠른 반응성을 위해)
+    const newAlerts = { ...alerts, [type]: newValue };
+    setAlerts(newAlerts);
+
+    // 2. 백엔드에 바뀐 설정값 전송
+    try {
+      await api.put('/members/me/alerts', {
+        chatAlert: newAlerts.chat,
+        transferAlert: newAlerts.transfer,
+        mannerAlert: newAlerts.manner
+      });
+      // 백엔드에도 정상 반영되도록 유저 정보 새로고침
+      await fetchMyInfo(); 
+    } catch (error) {
+      alert('알림 설정 저장에 실패했습니다.');
+      setAlerts(alerts); // 에러 발생 시 원래 상태로 되돌림
+    }
+  };
+
   return (
     <div className="my-page">
       <div className="page-header">
@@ -130,7 +163,7 @@ export default function MyPage() {
       <div className="my-profile-section">
         <div className="my-profile-row" style={{ display: 'flex', gap: 20, alignItems: 'center' }}>
           
-          {/* ⭐️ 프로필 이미지가 있으면 이미지 출력, 없으면 닉네임 첫 글자 */}
+          {/* 프로필 이미지가 있으면 이미지 출력, 없으면 닉네임 첫 글자 */}
           <div className="avatar-lg" style={{ 
             width: 60, height: 60, borderRadius: '50%', background: '#e94560', overflow: 'hidden',
             color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 700 
@@ -225,7 +258,7 @@ export default function MyPage() {
               <button onClick={() => setActiveTab('noti')} style={{ flex: 1, padding: '10px 0', border: 'none', background: 'none', borderBottom: activeTab === 'noti' ? '2px solid #e94560' : 'none', color: activeTab === 'noti' ? '#e94560' : '#888', fontWeight: activeTab === 'noti' ? 700 : 400, cursor: 'pointer' }}>알림</button>
             </div>
 
-            {/* ⭐️ 탭 1: 프로필 및 계정 설정 (파일 업로드 추가됨) */}
+            {/* 탭 1: 프로필 및 계정 설정 */}
             {activeTab === 'profile' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                 {/* 1. 프로필 이미지 변경 영역 */}
@@ -317,22 +350,22 @@ export default function MyPage() {
               </div>
             )}
 
-            {/* 탭 3: 알림 설정 */}
+            {/* ⭐️ [수정된 부분] 탭 3: 알림 설정 (onChange에 handleToggleAlert 연결 완료) */}
             {activeTab === 'noti' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #f1f1f1' }}>
                   <span style={{ fontSize: 15 }}>💬 채팅 메시지 알림</span>
-                  <input type="checkbox" checked={alerts.chat} onChange={(e) => setAlerts({...alerts, chat: e.target.checked})} style={{ transform: 'scale(1.3)' }}/>
+                  <input type="checkbox" checked={alerts.chat} onChange={(e) => handleToggleAlert('chat', e.target.checked)} style={{ transform: 'scale(1.3)', cursor: 'pointer' }}/>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #f1f1f1' }}>
                   <span style={{ fontSize: 15 }}>🎟️ 양도 거래 상태 변경 알림</span>
-                  <input type="checkbox" checked={alerts.transfer} onChange={(e) => setAlerts({...alerts, transfer: e.target.checked})} style={{ transform: 'scale(1.3)' }}/>
+                  <input type="checkbox" checked={alerts.transfer} onChange={(e) => handleToggleAlert('transfer', e.target.checked)} style={{ transform: 'scale(1.3)', cursor: 'pointer' }}/>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0' }}>
                   <span style={{ fontSize: 15 }}>🔥 매너 평가 요청 알림</span>
-                  <input type="checkbox" checked={alerts.manner} onChange={(e) => setAlerts({...alerts, manner: e.target.checked})} style={{ transform: 'scale(1.3)' }}/>
+                  <input type="checkbox" checked={alerts.manner} onChange={(e) => handleToggleAlert('manner', e.target.checked)} style={{ transform: 'scale(1.3)', cursor: 'pointer' }}/>
                 </div>
-                <p style={{ margin: 0, fontSize: 12, color: '#aaa', textAlign: 'center' }}>알림 설정은 즉시 자동 저장됩니다. (추후 구현 예정)</p>
+                <p style={{ margin: 0, fontSize: 12, color: '#aaa', textAlign: 'center' }}>💡 체크박스를 누르면 즉시 자동 저장됩니다.</p>
               </div>
             )}
             
