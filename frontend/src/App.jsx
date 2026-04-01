@@ -26,6 +26,7 @@ export default function App() {
   const [selectedPostId, setSelectedPostId] = useState(null)
   const [authMode, setAuthMode] = useState('login') // 'login' | 'signup'
   const [chatRoom, setChatRoom] = useState(null)
+  
 
   if (loading) {
     return (

@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { TeamBadge } from '../components/TeamComponents'
 import api from '../api/api'
 
-// KBO 10개 구단 하드코딩 (실제 DB의 team_id와 맞춰야 합니다)
+// KBO 10개 구단 하드코딩 (백엔드 data.sql의 id 값과 정확히 일치)
 const KBO_TEAMS = [
   { id: 1, name: 'LG 트윈스' },
   { id: 2, name: '두산 베어스' },
@@ -19,10 +19,12 @@ const KBO_TEAMS = [
 
 export default function MyPage() {
   const { user, logout, fetchMyInfo } = useAuth();
+  
+  // 닉네임 수정 State
   const [isEditing, setIsEditing] = useState(false);
   const [newNickname, setNewNickname] = useState('');
 
-  // --- 설정 모달 관련 State ---
+  // 설정 모달 관련 State
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('profile'); // 'profile', 'team', 'noti'
   
@@ -32,6 +34,10 @@ export default function MyPage() {
   // 알림 설정 State (UI 전용)
   const [alerts, setAlerts] = useState({ chat: true, transfer: true, manner: true });
 
+  // ⭐️ 프로필 이미지 & 비밀번호 변경 State
+  const [newImageUrl, setNewImageUrl] = useState('');
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '' });
+
   useEffect(() => {
     if (user?.nickname) {
       setNewNickname(user.nickname);
@@ -40,7 +46,7 @@ export default function MyPage() {
 
   if (!user) return <div className="loading">사용자 정보를 불러오는 중입니다...</div>;
 
-  // 닉네임 수정 API 호출
+  // 1. 닉네임 수정 API 호출
   const handleUpdateNickname = async () => {
     if (!newNickname.trim()) return alert('닉네임을 입력해주세요.');
     try {
@@ -53,21 +59,63 @@ export default function MyPage() {
     }
   };
 
-  // 응원 팀 변경 API 호출
+  // 2. 응원 팀 변경 API 호출
   const handleChangeTeam = async () => {
     if (!selectedTeamId) return alert('변경할 팀을 선택해주세요.');
-    
-    // 기획서 제약조건: 시즌당 1회 경고창
     if (!window.confirm('🚨 응원 팀 변경은 정규 시즌 중 1회만 가능합니다.\n정말 변경하시겠습니까?')) return;
 
     try {
       await api.put('/members/me/team', { teamId: parseInt(selectedTeamId) });
-      await fetchMyInfo(); // 변경된 정보 다시 불러오기
+      await fetchMyInfo();
       alert('응원 팀이 성공적으로 변경되었습니다.');
-      setIsSettingsModalOpen(false); // 모달 닫기
+      setIsSettingsModalOpen(false);
     } catch (error) {
-      // 이미 변경했거나 같은 팀인 경우 백엔드에서 에러 메시지를 줌
       alert(error.response?.data?.message || '팀 변경에 실패했습니다.');
+    }
+  };
+
+  // 3-1. ⭐️ 내 컴퓨터에서 이미지 파일 선택 시 Base64로 변환하는 함수
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // 용량 제한 (안정성을 위해 2MB 이하로 제한)
+    if (file.size > 2 * 1024 * 1024) {
+      return alert('이미지 용량은 2MB를 초과할 수 없습니다.');
+    }
+
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onloadend = () => {
+      setNewImageUrl(reader.result); // 변환된 긴 Base64 텍스트를 State에 저장
+    };
+  };
+
+  // 3-2. ⭐️ 프로필 이미지 변경 API 호출 (서버로 전송)
+  const handleUpdateProfileImage = async () => {
+    if (!newImageUrl.trim()) return alert('이미지를 선택하거나 URL을 입력해주세요.');
+    try {
+      await api.put('/members/me/profile-image', { profileImageUrl: newImageUrl });
+      await fetchMyInfo(); // 내 정보 다시 불러와서 이미지 즉시 갱신
+      alert('프로필 이미지가 성공적으로 변경되었습니다.');
+      setNewImageUrl('');
+    } catch (error) {
+      alert(error.response?.data?.message || '프로필 이미지 변경에 실패했습니다.');
+    }
+  };
+
+  // 4. ⭐️ 비밀번호 변경 API 호출
+  const handleUpdatePassword = async () => {
+    if (!passwordForm.currentPassword || !passwordForm.newPassword) {
+      return alert('현재 비밀번호와 새 비밀번호를 모두 입력해주세요.');
+    }
+    try {
+      await api.put('/members/me/password', passwordForm);
+      alert('비밀번호가 성공적으로 변경되었습니다. 안전을 위해 다시 로그인해주세요.');
+      setIsSettingsModalOpen(false);
+      logout(); // 비밀번호 변경 후 자동 로그아웃 처리
+    } catch (error) {
+      alert(error.response?.data?.message || '비밀번호 변경 실패 (기존 비밀번호를 확인하세요).');
     }
   };
 
@@ -81,11 +129,17 @@ export default function MyPage() {
       {/* --- 상단 프로필 섹션 --- */}
       <div className="my-profile-section">
         <div className="my-profile-row" style={{ display: 'flex', gap: 20, alignItems: 'center' }}>
+          
+          {/* ⭐️ 프로필 이미지가 있으면 이미지 출력, 없으면 닉네임 첫 글자 */}
           <div className="avatar-lg" style={{ 
-            width: 60, height: 60, borderRadius: '50%', background: '#e94560', 
+            width: 60, height: 60, borderRadius: '50%', background: '#e94560', overflow: 'hidden',
             color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 700 
           }}>
-            {user.nickname?.substring(0, 1)}
+            {user.profileImageUrl ? (
+              <img src={user.profileImageUrl} alt="프로필" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              user.nickname?.substring(0, 1)
+            )}
           </div>
           
           <div style={{ flex: 1 }}>
@@ -115,7 +169,6 @@ export default function MyPage() {
         </div>
 
         <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
-          {/* 모달창 열기 버튼으로 변경 */}
           <button className="btn-edit" onClick={() => setIsSettingsModalOpen(true)} style={{ padding: '10px 16px', borderRadius: 8, border: '1px solid #ddd', background: '#fff', cursor: 'pointer' }}>⚙️ 설정</button>
           <button className="btn-edit" onClick={logout} style={{ padding: '10px 16px', borderRadius: 8, border: '1px solid #e94560', color: '#e94560', background: '#fff', cursor: 'pointer' }}>🚪 로그아웃</button>
         </div>
@@ -147,7 +200,7 @@ export default function MyPage() {
       </div>
 
       {/* ==================================================== */}
-      {/* ⚙️ 설정 모달 (팝업창) 구현부 */}
+      {/* ⚙️ 설정 모달 (팝업창) */}
       {/* ==================================================== */}
       {isSettingsModalOpen && (
         <div className="modal-overlay" style={{
@@ -157,7 +210,8 @@ export default function MyPage() {
         }}>
           <div className="modal-content" style={{
             background: '#fff', padding: '24px', borderRadius: '16px', width: '90%', maxWidth: '400px',
-            display: 'flex', flexDirection: 'column', gap: '20px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)'
+            display: 'flex', flexDirection: 'column', gap: '20px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
+            maxHeight: '90vh', overflowY: 'auto'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>⚙️ 환경 설정</h3>
@@ -171,16 +225,59 @@ export default function MyPage() {
               <button onClick={() => setActiveTab('noti')} style={{ flex: 1, padding: '10px 0', border: 'none', background: 'none', borderBottom: activeTab === 'noti' ? '2px solid #e94560' : 'none', color: activeTab === 'noti' ? '#e94560' : '#888', fontWeight: activeTab === 'noti' ? 700 : 400, cursor: 'pointer' }}>알림</button>
             </div>
 
-            {/* 탭 1: 프로필 및 계정 설정 */}
+            {/* ⭐️ 탭 1: 프로필 및 계정 설정 (파일 업로드 추가됨) */}
             {activeTab === 'profile' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                {/* 1. 프로필 이미지 변경 영역 */}
                 <div>
-                  <label style={{ fontSize: 14, color: '#666', fontWeight: 600 }}>프로필 이미지</label>
-                  <button onClick={() => alert('프로필 이미지 변경 기능은 준비 중입니다.')} style={{ width: '100%', marginTop: 8, padding: 12, border: '1px solid #ddd', borderRadius: 8, background: '#f8f9fa', cursor: 'pointer' }}>📷 갤러리에서 사진 선택</button>
+                  <label style={{ fontSize: 14, color: '#666', fontWeight: 600 }}>프로필 이미지 변경</label>
+                  
+                  {/* 파일 업로드 버튼 */}
+                  <div style={{ marginTop: 8, padding: '10px', border: '1px dashed #ccc', borderRadius: 8, background: '#fafafa' }}>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      onChange={handleImageUpload}
+                      style={{ width: '100%', fontSize: 13 }}
+                    />
+                  </div>
+
+                  {/* 외부 URL 입력 및 저장 버튼 */}
+                  <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                    <input 
+                      type="text" 
+                      placeholder="또는 외부 이미지 URL 직접 입력..." 
+                      value={newImageUrl}
+                      onChange={(e) => setNewImageUrl(e.target.value)}
+                      style={{ flex: 1, padding: '10px 12px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14 }}
+                    />
+                    <button onClick={handleUpdateProfileImage} style={{ padding: '0 16px', background: '#333', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 'bold' }}>저장</button>
+                  </div>
+                  <p style={{ margin: '6px 0 0 0', fontSize: 11, color: '#999' }}>* 내 PC에서 사진을 고르거나 링크를 입력한 후 [저장]을 눌러주세요.</p>
                 </div>
+
+                <hr style={{ border: 0, borderTop: '1px solid #eee', width: '100%' }} />
+
+                {/* 2. 비밀번호 변경 영역 */}
                 <div>
                   <label style={{ fontSize: 14, color: '#666', fontWeight: 600 }}>비밀번호 변경</label>
-                  <button onClick={() => alert('비밀번호 변경 API 연결 준비 중입니다.')} style={{ width: '100%', marginTop: 8, padding: 12, border: '1px solid #ddd', borderRadius: 8, background: '#f8f9fa', cursor: 'pointer' }}>🔒 새 비밀번호 설정</button>
+                  <input 
+                    type="password" 
+                    placeholder="현재 비밀번호" 
+                    value={passwordForm.currentPassword}
+                    onChange={(e) => setPasswordForm({...passwordForm, currentPassword: e.target.value})}
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: 8, marginTop: 8, fontSize: 14 }}
+                  />
+                  <input 
+                    type="password" 
+                    placeholder="새 비밀번호" 
+                    value={passwordForm.newPassword}
+                    onChange={(e) => setPasswordForm({...passwordForm, newPassword: e.target.value})}
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: 8, marginTop: 8, fontSize: 14 }}
+                  />
+                  <button onClick={handleUpdatePassword} style={{ width: '100%', padding: '12px', marginTop: 12, background: '#e94560', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 'bold', cursor: 'pointer' }}>
+                    비밀번호 재설정
+                  </button>
                 </div>
               </div>
             )}
