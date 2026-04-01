@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
 import { TEAM_LOGO, TEAM_NAME } from './TeamComponents'
 import WeatherWidget from './WeatherWidget'
+import api from '../api/api'
+
 
 // ─────────────────────────────────────────
-// 네이버 스포츠 API 설정 (Vite Proxy 사용)
+// 라이브 스코어 API 설정 (백엔드 자체 API 호출)
 // ─────────────────────────────────────────
-const LIVE_SCORE_API_URL = '/naver-api/schedule/games?categoryIds=kbo'
+const LIVE_SCORE_API_URL = '/api/baseball/live'
 const POLLING_INTERVAL_MS = 30_000 // 30초
 
 // 네이버 API 팀 코드 매핑
@@ -243,21 +245,20 @@ export default function TodaysGame({ myTeam }) {
   async function fetchLiveScore() {
     try {
       const today = new Date().toISOString().slice(0, 10)
-      const res = await fetch(`${LIVE_SCORE_API_URL}&date=${today}`)
-      if (!res.ok) throw new Error('api error')
-      const data = await res.json()
-      
+      const res = await api.get(`/baseball/live?date=${today}`)
+      const data = res.data;
+
       const parsedGames = (data?.result?.games || []).map(g => {
         const homeId = NAVER_TEAM_MAP[g.homeTeamCode] || g.homeTeamCode
         const awayId = NAVER_TEAM_MAP[g.awayTeamCode] || g.awayTeamCode
-        
+
         let status = 'scheduled'
         if (g.statusCode === 'PLAYING') status = 'live'
         if (g.statusCode === 'RESULT') status = 'final'
         if (g.statusCode === 'CANCEL') status = 'cancelled'
-        
+
         let startTime = g.gameDateTime ? g.gameDateTime.slice(11, 16) : ''
-        
+
         return {
           id: g.gameId,
           status,
@@ -273,7 +274,7 @@ export default function TodaysGame({ myTeam }) {
           pitcher: { home: '', away: '' }
         }
       })
-      
+
       if (parsedGames.length > 0) {
         setGames(parsedGames)
         setApiAvailable(true)
@@ -294,10 +295,10 @@ export default function TodaysGame({ myTeam }) {
   // myTeam 경기 우선 정렬
   const sortedGames = myTeam
     ? [...games].sort((a, b) => {
-        const aIsMe = a.homeTeam === myTeam || a.awayTeam === myTeam
-        const bIsMe = b.homeTeam === myTeam || b.awayTeam === myTeam
-        return bIsMe - aIsMe
-      })
+      const aIsMe = a.homeTeam === myTeam || a.awayTeam === myTeam
+      const bIsMe = b.homeTeam === myTeam || b.awayTeam === myTeam
+      return bIsMe - aIsMe
+    })
     : games
 
   return (
@@ -309,7 +310,7 @@ export default function TodaysGame({ myTeam }) {
         )}
         {apiAvailable && lastFetched && (
           <span className="tgs-updated">
-            {String(lastFetched.getHours()).padStart(2,'0')}:{String(lastFetched.getMinutes()).padStart(2,'0')} 업데이트
+            {String(lastFetched.getHours()).padStart(2, '0')}:{String(lastFetched.getMinutes()).padStart(2, '0')} 업데이트
           </span>
         )}
       </div>

@@ -7,7 +7,11 @@ const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토']
 // ── 백엔드 API 헬퍼 ──────────────────────────────────────
 async function fetchSeasonSchedule(year) {
   const res = await api.get(`/baseball/season?year=${year}`)
-  return res.data
+  let data = res.data;
+  if (data?.success && data?.data) {
+    data = data.data;
+  }
+  return data;
 }
 
 async function syncSchedule(year) {
