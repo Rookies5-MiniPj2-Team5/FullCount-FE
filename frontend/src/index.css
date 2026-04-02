@@ -1287,6 +1287,195 @@ body {
   .sync-btn { justify-content: center; }
 }
 
+/* ── 클릭 가능한 경기 카드 ── */
+.game-card--clickable {
+  cursor: pointer;
+  position: relative;
+}
+.game-card--clickable:focus-visible {
+  outline: 2px solid #e94560;
+  outline-offset: 2px;
+}
+.game-card__hover-hint {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: #e94560;
+  margin-top: 10px;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  letter-spacing: 0.02em;
+}
+.game-card--clickable:hover .game-card__hover-hint {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ===== 경기 상세 모달 (MatchDetailModal) ===== */
+
+/* 오버레이 */
+.match-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 12, 30, 0.72);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  opacity: 0;
+  transition: opacity 0.22s ease;
+}
+.match-modal-overlay--visible {
+  opacity: 1;
+}
+
+/* 모달 컨테이너 */
+.match-modal {
+  background: linear-gradient(145deg, #1a2a4a 0%, #0d1b35 100%);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55),
+              0 0 0 1px rgba(255, 255, 255, 0.04);
+  width: 100%;
+  max-width: 480px;
+  color: #fff;
+  overflow: hidden;
+  transform: translateY(24px) scale(0.97);
+  opacity: 0;
+  transition: transform 0.28s cubic-bezier(0.34, 1.26, 0.64, 1),
+              opacity 0.22s ease;
+}
+.match-modal--visible {
+  transform: translateY(0) scale(1);
+  opacity: 1;
+}
+
+/* 모달 헤더 */
+.match-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+.match-modal__title {
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.55);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.match-modal__close {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.match-modal__close:hover {
+  background: rgba(233, 69, 96, 0.25);
+  border-color: rgba(233, 69, 96, 0.5);
+  color: #e94560;
+}
+
+/* 모달 바디 */
+.match-modal__body {
+  padding: 20px 20px 16px;
+}
+
+/* 스코어보드 (TodaysGame 공유 + 모달 전용 오버라이드) */
+.match-modal__scoreboard {
+  margin-bottom: 16px !important;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+/* 팀 로고 — 더 크게 */
+.match-modal__logo {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.4));
+}
+
+/* 팀 이름 — 더 크게 */
+.match-modal__team-name {
+  font-size: 20px !important;
+  font-weight: 900 !important;
+}
+
+/* 인라인 시간 • 구장 (배지 오른쪽) */
+.match-modal__meta-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 500;
+}
+.match-modal__sep {
+  color: rgba(255, 255, 255, 0.25);
+  font-size: 10px;
+}
+
+/* 하단 푸터 — 최종 스코어 전용 */
+.match-modal__footer--score-only {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  margin-top: 2px;
+}
+.match-modal__result {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* 로딩 상태 */
+.match-modal__loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 40px 20px;
+}
+.match-modal__spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-top-color: #e94560;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+.match-modal__loading-text {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.4);
+  font-weight: 500;
+  margin: 0;
+}
+
+/* 모바일 */
+@media (max-width: 520px) {
+  .match-modal { border-radius: 16px; }
+  .match-modal__logo { width: 44px; height: 44px; }
+  .match-modal__team-name { font-size: 16px !important; }
+  .tgc-score { font-size: 26px !important; }
+}
+
 /* ===== KboStandings: My Team 기능 ===== */
 .standings-my-team-hint {
   padding: 6px 14px;
