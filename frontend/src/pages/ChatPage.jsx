@@ -78,7 +78,16 @@ export default function ChatPage({
           client.subscribe(`/topic/chat/${currentRid}`, (frame) => {
             try {
               const newMessage = JSON.parse(frame.body);
-              setMessages((prev) => [...prev, newMessage]);
+              console.log("[Chat] Received:", newMessage);
+
+              // ✅ 데이터 정규화: content/message, sender/senderNickname 등 대응
+              const normalizedMsg = {
+                ...newMessage,
+                content: newMessage.content || newMessage.message,
+                senderNickname: newMessage.senderNickname || newMessage.sender,
+                sentAt: newMessage.sentAt || new Date().toISOString(),
+              };
+              setMessages((prev) => [...prev, normalizedMsg]);
             } catch (e) {
               console.error("[Chat] 메시지 파싱 오류:", e);
             }
@@ -127,10 +136,15 @@ export default function ChatPage({
       roomId,
       senderId:       currentUser?.id,
       senderNickname: currentUser?.nickname,
+      sender:         currentUser?.nickname, // e.g. 대응
       content:        inputText.trim(),
+      message:        inputText.trim(),      // e.g. 대응
     };
 
     try {
+      console.log("[Chat] Sending:", chatMsg);
+      // NOTE: 백엔드 설정에 따라 /app/chat/${roomId} 또는 /app/chat/send 가 사용됩니다.
+      // 현재는 기존 코드의 경로를 유지하되 로그를 통해 확인 가능하게 합니다.
       clientRef.current.send(
         `/app/chat/${roomId}`,
         {},

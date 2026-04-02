@@ -1823,3 +1823,413 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+/* ===== 티켓 글쓰기 모달 ===== */
+
+.ticket-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+  padding: 16px;
+  animation: fadeIn 0.18s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.ticket-modal {
+  background: #fff;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 560px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.22);
+  animation: slideUp 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(24px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)   scale(1); }
+}
+
+.ticket-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22px 26px 0;
+  margin-bottom: 4px;
+}
+
+.ticket-modal__title {
+  font-size: 18px;
+  font-weight: 800;
+  color: #1a1a1a;
+  margin: 0;
+}
+
+.ticket-modal__close {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: none;
+  background: #f5f5f5;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, transform 0.15s;
+  color: #555;
+  flex-shrink: 0;
+}
+.ticket-modal__close:hover {
+  background: #ffe0e6;
+  color: #e94560;
+  transform: rotate(90deg);
+}
+
+/* 폼 */
+.ticket-modal__form {
+  padding: 18px 26px 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ticket-form-row {
+  display: grid;
+  gap: 12px;
+}
+.ticket-form-row--2col { grid-template-columns: 1fr 1fr; }
+.ticket-form-row--3col { grid-template-columns: 1fr 1fr 1fr; }
+
+.ticket-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ticket-form-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #555;
+  letter-spacing: 0.02em;
+}
+
+.ticket-form-label .required {
+  color: #e94560;
+  margin-left: 2px;
+}
+
+.ticket-form-input,
+.ticket-form-select,
+.ticket-form-textarea {
+  padding: 10px 14px;
+  border: 1.5px solid #e0e0e0;
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: inherit;
+  color: #1a1a1a;
+  background: #fafafa;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+.ticket-form-input:focus,
+.ticket-form-select:focus,
+.ticket-form-textarea:focus {
+  border-color: #e94560;
+  box-shadow: 0 0 0 3px rgba(233, 69, 96, 0.08);
+  background: #fff;
+}
+
+.ticket-form-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23999'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+  cursor: pointer;
+}
+
+.ticket-form-textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+/* 버튼 영역 */
+.ticket-modal__actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.ticket-modal__btn-cancel,
+.ticket-modal__btn-submit {
+  flex: 1;
+  padding: 13px 20px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  transition: all 0.18s;
+  font-family: inherit;
+}
+
+.ticket-modal__btn-cancel {
+  background: #f5f5f5;
+  color: #555;
+  border: 1.5px solid #e0e0e0;
+}
+.ticket-modal__btn-cancel:hover:not(:disabled) {
+  background: #eee;
+  color: #333;
+}
+
+.ticket-modal__btn-submit {
+  background: linear-gradient(135deg, #e94560 0%, #d43650 100%);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(233, 69, 96, 0.3);
+}
+.ticket-modal__btn-submit:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(233, 69, 96, 0.45);
+}
+.ticket-modal__btn-submit:disabled,
+.ticket-modal__btn-cancel:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* 모달 반응형 */
+@media (max-width: 560px) {
+  .ticket-form-row--2col { grid-template-columns: 1fr; }
+  .ticket-form-row--3col { grid-template-columns: 1fr 1fr; }
+  .ticket-modal__form { padding: 14px 16px 20px; }
+  .ticket-modal__header { padding: 18px 16px 0; }
+}
+
+/* ===== 티켓 상세 모달 ===== */
+
+.ticket-detail-modal {
+  max-width: 480px;
+  overflow: hidden;
+}
+
+/* 상단 팀 배너 */
+.ticket-detail__banner {
+  position: relative;
+  padding: 28px 24px 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ticket-detail__banner-teams {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.ticket-detail__banner-team {
+  font-size: 22px;
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: 0.04em;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.ticket-detail__banner-vs {
+  font-size: 13px;
+  font-weight: 800;
+  color: rgba(255,255,255,0.6);
+  letter-spacing: 0.08em;
+}
+
+.ticket-detail__close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: rgba(255,255,255,0.2) !important;
+  color: #fff !important;
+}
+.ticket-detail__close:hover {
+  background: rgba(255,255,255,0.35) !important;
+  transform: rotate(90deg);
+}
+
+/* 바디 */
+.ticket-detail__body {
+  padding: 20px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.ticket-detail__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ticket-detail__row--between {
+  justify-content: space-between;
+}
+
+.ticket-detail__date {
+  font-size: 13px;
+  color: #888;
+  font-weight: 500;
+}
+
+/* 정보 그리드 */
+.ticket-detail__info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 14px 16px;
+  border: 1px solid #f0f0f0;
+}
+
+.ticket-detail__info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ticket-detail__info-label {
+  font-size: 11px;
+  color: #999;
+  font-weight: 600;
+}
+
+.ticket-detail__info-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+/* 설명 */
+.ticket-detail__desc {
+  background: #fff8f0;
+  border: 1px solid #ffe0b2;
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.ticket-detail__desc-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #e07800;
+  margin: 0 0 6px;
+}
+
+.ticket-detail__desc-text {
+  font-size: 13px;
+  color: #555;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* 가격 + 작성자 */
+.ticket-detail__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 4px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.ticket-detail__price-label {
+  font-size: 11px;
+  color: #999;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.ticket-detail__price {
+  font-size: 26px;
+  font-weight: 900;
+  color: #1a1a1a;
+  letter-spacing: -0.03em;
+}
+
+.ticket-detail__author {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ticket-detail__author-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.ticket-detail__author-date {
+  font-size: 11px;
+  color: #aaa;
+  margin-top: 2px;
+}
+
+/* 액션 버튼 */
+.ticket-detail__actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.ticket-detail__contact-btn {
+  flex: 1;
+  padding: 13px 20px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+  background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.35);
+  transition: all 0.18s;
+}
+.ticket-detail__contact-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(124, 58, 237, 0.5);
+}
+
+.ticket-detail__mine-badge {
+  flex: 1;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: #888;
+  background: #f5f5f5;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1.5px dashed #ddd;
+}
+
+@media (max-width: 480px) {
+  .ticket-detail__info-grid {
+    grid-template-columns: 1fr;
+  }
+  .ticket-detail__footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+}

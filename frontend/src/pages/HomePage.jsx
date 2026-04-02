@@ -112,7 +112,7 @@ export default function HomePage({ onNavigate }) {
               <div
                 key={i}
                 className={`recruit-card${p.status === 'closed' ? ' recruit-card--closed' : ''}`}
-                onClick={() => p.status !== 'closed' && onNavigate && onNavigate('ticket-transfer')}
+                onClick={() => p.status !== 'closed' && onNavigate && onNavigate('meetup')}
               >
                 {/* 상단: 팀 배지 + 상태 뱃지 */}
                 <div className="recruit-card__head">
