@@ -24,7 +24,7 @@
 import { useState, useEffect, useRef } from "react";
 
 // ─── 더미 채팅방 목록 ─────────────────────────────────
-// TODO: BE 연동 - GET /api/chat/rooms/my
+// TODO: BE 연동 - GET /api/chat/rooms
 // 응답: ChatRoomSummaryDTO[]
 // ChatRoomSummaryDTO: {
 //   id, roomType: "GROUP"|"ONE_ON_ONE",
@@ -36,7 +36,7 @@ import { useState, useEffect, useRef } from "react";
 // }
 const DUMMY_ROOMS = [
   {
-    id: 101,
+    id: 1,
     roomType: "GROUP",
     title: "두산 홈 개막전 같이 가실 분!",
     lastMessage: "집합 시간은 17:30으로 할게요!",
@@ -94,7 +94,7 @@ function fmtRelative(iso) {
 // ─── 채팅방 아이템 ────────────────────────────────────
 function RoomItem({ room, onClick }) {
   const color   = TEAM_COLORS[room.crewTeam] || "#2563eb";
-  const isGroup = room.roomType === "GROUP";
+  const isGroup = room.roomType === "GROUP_JOIN" || room.roomType === "GROUP_CREW";
 
   return (
     <button style={s.roomItem} onClick={() => onClick(room)}>

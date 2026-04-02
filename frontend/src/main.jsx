@@ -5,9 +5,9 @@ import App from './App.jsx'
 import { AuthProvider } from './context/AuthContext'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
+  //<React.StrictMode> websocket 연결 문제로 일단 제거
     <AuthProvider>
       <App />
     </AuthProvider>
-  </React.StrictMode>,
+  //</React.StrictMode>,
 )

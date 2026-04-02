@@ -15,8 +15,7 @@ export const useChat = (roomId, currentUser) => {
       console.log(`채팅방 ${roomId} 연결 성공!`);
 
       // 2. 메시지 구독 (BE 설정: /topic으로 시작)
-      // 보통 채팅방별 구독 경로는 /topic/chat/room/{roomId} 등으로 설계합니다.
-      stompClient.current.subscribe(`/topic/chat/room/${roomId}`, (frame) => {
+      stompClient.current.subscribe(`/topic/chat/${roomId}`, (frame) => {
         const newMessage = JSON.parse(frame.body);
         setMessages((prev) => [...prev, newMessage]);
       });
@@ -36,12 +35,11 @@ export const useChat = (roomId, currentUser) => {
         roomId: roomId,
         senderId: currentUser.id,
         senderNickname: currentUser.nickname,
-        message: content,
+        content: content,
         type: 'TALK'
       };
 
-      // BE의 @MessageMapping("/chat/message")와 연결된다면 아래 경로가 됩니다.
-      stompClient.current.send("/app/chat/message", {}, JSON.stringify(chatMessage));
+      stompClient.current.send(`/app/chat/${roomId}`, {}, JSON.stringify(chatMessage));
     }
   };
 
