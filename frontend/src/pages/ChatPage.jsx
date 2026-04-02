@@ -85,7 +85,7 @@ export default function ChatPage({
                 ...newMessage,
                 content: newMessage.content || newMessage.message,
                 senderNickname: newMessage.senderNickname || newMessage.sender,
-                sentAt: newMessage.sentAt || new Date().toISOString(),
+                timestamp: newMessage.timestamp || new Date().toISOString(),
               };
               setMessages((prev) => [...prev, normalizedMsg]);
             } catch (e) {
@@ -223,7 +223,7 @@ export default function ChatPage({
                   <span style={s.senderName}>{msg.senderNickname}</span>
                 )}
                 <div style={s.bubbleRow}>
-                  {mine  && <span style={s.time}>{fmtTime(msg.sentAt)}</span>}
+                  {mine  && <span style={s.time}>{fmtTime(msg.timestamp)}</span>}
                   <div
                     style={{
                       ...s.bubble,
@@ -234,7 +234,7 @@ export default function ChatPage({
                   >
                     {msg.content}
                   </div>
-                  {!mine && <span style={s.time}>{fmtTime(msg.sentAt)}</span>}
+                  {!mine && <span style={s.time}>{fmtTime(msg.timestamp)}</span>}
                 </div>
               </div>
             </div>
