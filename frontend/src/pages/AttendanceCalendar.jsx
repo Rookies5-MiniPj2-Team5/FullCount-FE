@@ -325,36 +325,55 @@ export default function AttendanceCalendar({ onBack, user }) {
 
             {/* 연간 뷰 */}
             {viewMode === 'year' && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-                    {MONTH_NAMES.map((monthName, idx) => {
-                        const stats = yearlyStats[idx];
-                        const isCurrentMonth = idx + 1 === currentMonth;
-                        return (
-                            <div key={idx} onClick={() => handleMonthClick(idx)}
-                                style={{ padding: 14, borderRadius: 12, cursor: 'pointer', border: isCurrentMonth ? `2px solid ${myTeamColor}` : '1px solid #eee', background: isCurrentMonth ? `${myTeamColor}10` : '#fafafa', textAlign: 'center' }}>
-                                <div style={{ fontWeight: 800, fontSize: 15, color: isCurrentMonth ? myTeamColor : '#333', marginBottom: 8 }}>{monthName}</div>
-                                {stats.total > 0 ? (
-                                    <>
-                                        <div style={{ fontSize: 11, color: '#888', marginBottom: 4 }}>{stats.total}경기</div>
-                                        <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>
-                                            <span style={{ color: '#2ecc71' }}>{stats.wins}승</span>
-                                            <span style={{ color: '#ccc' }}> / </span>
-                                            <span style={{ color: '#e74c3c' }}>{stats.loses}패</span>
-                                        </div>
-                                        <div style={{ height: 4, borderRadius: 2, background: '#eee', overflow: 'hidden' }}>
-                                            <div style={{ height: '100%', borderRadius: 2, width: `${stats.rate ?? 0}%`, background: myTeamColor }} />
-                                        </div>
-                                        <div style={{ fontSize: 11, fontWeight: 700, color: myTeamColor, marginTop: 4 }}>
-                                            {stats.rate !== null ? `${stats.rate}%` : '-'}
-                                        </div>
-                                    </>
-                                ) : (
-                                    <div style={{ fontSize: 11, color: '#ccc' }}>기록 없음</div>
-                                )}
-                            </div>
-                        );
-                    })}
-                </div>
+                <>
+                    {/* 🌟 새로 추가된 연간 뷰 상단 컨트롤러 (월간 뷰와 동일한 스타일 적용) */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, marginBottom: 20 }}>
+                        <button onClick={() => setCurrentYear(y => y - 1)} style={{ border: 'none', background: 'none', color: myTeamColor, fontSize: 18, cursor: 'pointer', padding: '10px' }}>◀</button>
+                        <button
+                            onClick={() => { setTempYear(currentYear); setIsDatePickerOpen(true); }}
+                            style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '5px 15px', borderRadius: '10px' }}
+                            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f0f0f0'}
+                            onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        >
+                            <span style={{ fontWeight: 800, fontSize: 20, color: '#333' }}>
+                                {currentYear}년
+                            </span>
+                            <div style={{ fontSize: '10px', color: '#888', marginTop: '2px' }}>클릭하여 날짜 변경</div>
+                        </button>
+                        <button onClick={() => setCurrentYear(y => y + 1)} style={{ border: 'none', background: 'none', color: myTeamColor, fontSize: 18, cursor: 'pointer', padding: '10px' }}>▶</button>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+                        {MONTH_NAMES.map((monthName, idx) => {
+                            const stats = yearlyStats[idx];
+                            const isCurrentMonth = idx + 1 === currentMonth;
+                            return (
+                                <div key={idx} onClick={() => handleMonthClick(idx)}
+                                    style={{ padding: 14, borderRadius: 12, cursor: 'pointer', border: isCurrentMonth ? `2px solid ${myTeamColor}` : '1px solid #eee', background: isCurrentMonth ? `${myTeamColor}10` : '#fafafa', textAlign: 'center' }}>
+                                    <div style={{ fontWeight: 800, fontSize: 15, color: isCurrentMonth ? myTeamColor : '#333', marginBottom: 8 }}>{monthName}</div>
+                                    {stats.total > 0 ? (
+                                        <>
+                                            <div style={{ fontSize: 11, color: '#888', marginBottom: 4 }}>{stats.total}경기</div>
+                                            <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>
+                                                <span style={{ color: '#2ecc71' }}>{stats.wins}승</span>
+                                                <span style={{ color: '#ccc' }}> / </span>
+                                                <span style={{ color: '#e74c3c' }}>{stats.loses}패</span>
+                                            </div>
+                                            <div style={{ height: 4, borderRadius: 2, background: '#eee', overflow: 'hidden' }}>
+                                                <div style={{ height: '100%', borderRadius: 2, width: `${stats.rate ?? 0}%`, background: myTeamColor }} />
+                                            </div>
+                                            <div style={{ fontSize: 11, fontWeight: 700, color: myTeamColor, marginTop: 4 }}>
+                                                {stats.rate !== null ? `${stats.rate}%` : '-'}
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div style={{ fontSize: 11, color: '#ccc' }}>기록 없음</div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </>
             )}
 
             {/* ✅ 팀원 코드 채택 — DatePicker 모달 */}
