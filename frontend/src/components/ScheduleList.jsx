@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { TeamBadge, TeamFilter } from './TeamComponents'
+import MatchDetailModal from './MatchDetailModal'
 import api from '../api/api'
 
 const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토']
@@ -36,6 +37,13 @@ function resolveTeamId(raw) {
   return TEAM_MAP[raw] ?? raw ?? '?'
 }
 
+// ── 홈팀 기본 구장 매핑 ───────────────────────────────────
+const DEFAULT_STADIUM = {
+  LG: '잠실', DU: '잠실', SSG: '인천', KIA: '광주',
+  SA: '대구', LO: '부산', HH: '대전', KT: '수원',
+  NC: '창원', WO: '서울',
+}
+
 // ── 날짜 파싱 헬퍼 ───────────────────────────────────────
 /**
  * gameDate 값은 "20260320" 또는 "2026-03-20" 형식 모두 지원
@@ -56,16 +64,38 @@ const getScheduleUrl = (dateString) => {
   return `https://m.sports.naver.com/kbaseball/schedule/index?date=${dateString}`;
 };
 
-// ── 경기 상태 배지 ───────────────────────────────────────
-function GameStatusBadge({ isCanceled, status, homeScore, awayScore }) {
-  const hasScore = homeScore != null && awayScore != null && homeScore !== '' && awayScore !== ''
-  const isFinished = hasScore || (status && (status.includes('종료') || status === 'RESULT' || status === 'FINAL'))
+// ── 라이브 API 팀 코드 매핑 ───────────────────────────────
+const NAVER_TEAM_MAP = {
+  LG: 'LG', OB: 'DU', DU: 'DU', SK: 'SSG', SSG: 'SSG',
+  HT: 'KIA', KIA: 'KIA', SS: 'SA', SA: 'SA',
+  LT: 'LO', LO: 'LO', HH: 'HH', KT: 'KT', NC: 'NC', WO: 'WO',
+};
 
+// ── 라이브 API 응답에서 이 경기 데이터 추출 ────────────────
+function findGameInLiveData(liveGames = [], homeId, awayId) {
+  return liveGames.find(g => {
+    const h = NAVER_TEAM_MAP[g.homeTeamCode] || g.homeTeamCode
+    const a = NAVER_TEAM_MAP[g.awayTeamCode] || g.awayTeamCode
+    return h === homeId && a === awayId
+  }) || null
+}
+
+// ── 경기 상태 배지 ───────────────────────────────────────
+function GameStatusBadge({ isCanceled, status }) {
   if (isCanceled) {
     return (
       <span className="game-badge game-badge--canceled">☔ 우천취소</span>
     )
   }
+  if (status === 'live') {
+    return (
+      <span className="game-badge game-badge--scheduled" style={{ background: '#fff0f3', color: '#e94560', border: '1px solid #ffccd5' }}>
+        🔴 라이브
+      </span>
+    )
+  }
+  const isFinished = (status === 'RESULT' || status === 'FINAL' || (status && (status.includes('종료') || status === 'FINISHED')))
+  
   if (isFinished) {
     return (
       <span className="game-badge game-badge--finished">✔ 경기종료</span>
@@ -77,32 +107,85 @@ function GameStatusBadge({ isCanceled, status, homeScore, awayScore }) {
 }
 
 // ── 단일 경기 카드 ───────────────────────────────────────
-function GameCard({ game }) {
+function GameCard({ game, onClick, liveData }) {
   const homeId = resolveTeamId(game.homeTeam)
   const awayId = resolveTeamId(game.awayTeam)
 
-  const hasScore =
-    game.homeScore != null && game.awayScore != null &&
-    game.homeScore !== '' && game.awayScore !== ''
+  // 실시간 데이터(liveData)가 있으면 우선적으로 사용
+  const isCanceled   = liveData ? (liveData.statusCode === 'CANCEL') : (game.canceled || game.isCanceled)
+  const displayTime  = liveData?.gameDateTime 
+    ? liveData.gameDateTime.slice(11, 16) 
+    : (game.gameTime || null)
+  
+  const displayStadium = (game.stadium && game.stadium !== '' && game.stadium !== '구장미정')
+    ? game.stadium
+    : DEFAULT_STADIUM[homeId] || '구장미정'
 
-  const homeParsed = hasScore ? Number(game.homeScore) : null
-  const awayParsed = hasScore ? Number(game.awayScore) : null
+  const homeScore = liveData?.homeTeamScore ?? game.homeScore ?? null
+  const awayScore = liveData?.awayTeamScore ?? game.awayScore ?? null
+  
+  const hasScore =
+    homeScore != null && awayScore != null &&
+    homeScore !== '' && awayScore !== ''
+
+  const homeParsed = hasScore ? Number(homeScore) : null
+  const awayParsed = hasScore ? Number(awayScore) : null
 
   const homeWins = homeParsed != null && awayParsed != null && homeParsed > awayParsed
   const awayWins = homeParsed != null && awayParsed != null && awayParsed > homeParsed
 
+  // 상태 결정 로직 강화
+  let currentStatus = game.status
+  if (liveData) {
+    const sc = liveData.statusCode
+    if (sc === 'PLAYING') currentStatus = 'live'
+    else if (sc === 'RESULT') currentStatus = 'RESULT'
+    else if (sc === 'CANCEL') currentStatus = 'CANCEL'
+    else if (sc === 'READY' || sc === 'SCHEDULED') currentStatus = 'SCHEDULED'
+  }
+
+  // 미래 경기인데 종료로 표시되는 것 방지 (시간 기반 가드)
+  const isFinishedStatus = (currentStatus === 'RESULT' || currentStatus === 'FINAL' || (currentStatus && currentStatus.includes('종료')))
+  let finalStatus = currentStatus
+  
+  if (isFinishedStatus) {
+    // 1. 점수 기반 체크: 0:0 이면 일단 의심
+    const isZeroZero = Number(homeScore) === 0 && Number(awayScore) === 0
+    
+    // 2. 시간 기반 체크
+    const gameDateObj = parseDateStr(game.gameDate)
+    if (gameDateObj) {
+      const [hour, min] = (displayTime || "18:30").split(':').map(Number)
+      const gameDateTime = new Date(gameDateObj.year, gameDateObj.month - 1, gameDateObj.day, hour, min)
+      const now = new Date()
+      
+      // 경기 시작 전이라면 상태가 '종료'여도 '예정'으로 표시
+      if (now < gameDateTime) {
+        finalStatus = 'SCHEDULED'
+      } else if (isZeroZero && !liveData) {
+        // 과거 경기인데 점수가 0:0이고 실시간 데이터도 없다면 아직 결과 반영 전이므로 '예정' 혹은 초기상태 유지
+        finalStatus = 'SCHEDULED'
+      }
+    }
+  }
+
   return (
-    <div className={`game-card ${game.isCanceled ? 'game-card--canceled' : ''}`}>
+    <div
+      className={`game-card game-card--clickable ${isCanceled ? 'game-card--canceled' : ''}`}
+      onClick={onClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onClick?.()}
+      aria-label={`${game.awayTeam} vs ${game.homeTeam} 경기 상세 보기`}
+    >
       {/* 상태 배지 */}
       <div className="game-card__header">
         <span className="game-card__meta">
-          🕒 {game.gameTime || '시간미정'} &nbsp;·&nbsp; 📍 {game.stadium || '구장미정'}
+          🕒 {displayTime || '시간미정'} &nbsp;·&nbsp; 📍 {displayStadium || '구장미정'}
         </span>
         <GameStatusBadge
-          isCanceled={game.isCanceled}
-          status={game.status}
-          homeScore={game.homeScore}
-          awayScore={game.awayScore}
+          isCanceled={isCanceled}
+          status={finalStatus}
         />
       </div>
 
@@ -114,7 +197,7 @@ function GameCard({ game }) {
           <TeamBadge teamId={awayId} />
           {hasScore && (
             <div className={`game-card__score ${awayWins ? 'game-card__score--win' : ''}`}>
-              {game.awayScore}
+              {awayScore}
             </div>
           )}
         </div>
@@ -127,11 +210,14 @@ function GameCard({ game }) {
           <TeamBadge teamId={homeId} />
           {hasScore && (
             <div className={`game-card__score ${homeWins ? 'game-card__score--win' : ''}`}>
-              {game.homeScore}
+              {homeScore}
             </div>
           )}
         </div>
       </div>
+
+      {/* 호버 힌트 */}
+      <div className="game-card__hover-hint">🔍 자세히 보기</div>
     </div>
   )
 }
@@ -145,6 +231,8 @@ export default function ScheduleList({ year = new Date().getFullYear() }) {
   const [teamFilter, setTeamFilter] = useState('ALL')
   const [month, setMonth] = useState(new Date().getMonth() + 1)
   const [selectedDate, setSelectedDate] = useState(null)
+  const [selectedGame, setSelectedGame] = useState(null) // 모달 대상 경기
+  const [dailyLiveData, setDailyLiveData] = useState([]) // 해당 날짜 실시간 정보
 
   // ── 데이터 로드 ─────────────────────────────────────
   const loadGames = useCallback(async () => {
@@ -163,6 +251,26 @@ export default function ScheduleList({ year = new Date().getFullYear() }) {
   }, [year])
 
   useEffect(() => { loadGames() }, [loadGames])
+
+  // ── 해당 날짜 실시간 정보 로드 ─────────────────────────────
+  useEffect(() => {
+    if (!selectedDate) return
+    let cancelled = false
+
+    async function fetchDailyLive() {
+      try {
+        const res = await api.get(`/baseball/live?date=${selectedDate}`)
+        if (!cancelled) {
+          setDailyLiveData(res.data?.result?.games || [])
+        }
+      } catch (e) {
+        console.error('Daily live fetch failed', e)
+        if (!cancelled) setDailyLiveData([])
+      }
+    }
+    fetchDailyLive()
+    return () => { cancelled = true }
+  }, [selectedDate])
 
   // ── 최신 동기화 ─────────────────────────────────────
   const handleSync = async () => {
@@ -377,6 +485,14 @@ export default function ScheduleList({ year = new Date().getFullYear() }) {
                     <GameCard
                       key={game.id ?? `${dateKey}-${idx}`}
                       game={game}
+                      liveData={findGameInLiveData(dailyLiveData, resolveTeamId(game.homeTeam), resolveTeamId(game.awayTeam))}
+                      onClick={() => setSelectedGame({
+                        ...game,
+                        homeTeam: resolveTeamId(game.homeTeam),
+                        awayTeam: resolveTeamId(game.awayTeam),
+                        // 백엔드의 canceled 필드명을 isCanceled로 나지화
+                        isCanceled: game.canceled || game.isCanceled,
+                      })}
                     />
                   ))}
                 </div>
@@ -384,6 +500,14 @@ export default function ScheduleList({ year = new Date().getFullYear() }) {
             )
           })()}
         </div>
+      )}
+
+      {/* ── 경기 상세 모달 ── */}
+      {selectedGame && (
+        <MatchDetailModal
+          game={selectedGame}
+          onClose={() => setSelectedGame(null)}
+        />
       )}
     </div>
   )
