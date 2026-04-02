@@ -134,7 +134,7 @@ export default function MyPage() {
 
   // 달력 뷰 전환 처리
   if (view === 'calendar') {
-    return <AttendanceCalendar onBack={() => setView('main')} />;
+    return <AttendanceCalendar onBack={() => setView('main')} user={user} />;
   }
 
   return (
