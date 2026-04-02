@@ -9,6 +9,7 @@ import HomePage from './pages/HomePage'
 import SignupPage from './pages/SignupPage'
 import ChatPage from './pages/ChatPage'
 import ChatFab from './components/ChatFab'
+import TicketTransferBoard from './pages/TicketTransferBoard'
 import './index.css'
 
 const NAV_ITEMS = [
@@ -16,6 +17,7 @@ const NAV_ITEMS = [
   { id: 'schedule', label: '경기일정', icon: '📅' },
   { id: 'meetup', label: '모집글', icon: '📋' },
   { id: 'crew', label: '크루', icon: '👥' },
+  { id: 'ticket', label: '티켓양도', icon: '🎫' },
   { id: 'my', label: '마이페이지', icon: '👤' },
 ]
 
@@ -113,6 +115,10 @@ export default function App() {
       case 'crew':
         return <CrewPage currentUser={user} />;
 
+      case 'ticket':
+      case 'ticket-transfer':
+        return <TicketTransferBoard />;
+
       case 'my':
         return <MyPage />;
 
@@ -135,7 +141,12 @@ export default function App() {
             {NAV_ITEMS.map(item => (
               <button
                 key={item.id}
-                className={`nav-item ${tab === item.id ? 'active' : ''}`}
+                className={`nav-item ${
+                  tab === item.id || 
+                  (item.id === 'ticket' && tab === 'ticket-transfer') ||
+                  (item.id === 'meetup' && tab === 'meetup-create') 
+                    ? 'active' : ''
+                }`}
                 onClick={() => handleTabChange(item.id)}
               >
                 <span className="nav-icon">{item.icon}</span>
