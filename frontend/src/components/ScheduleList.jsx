@@ -326,10 +326,9 @@ export default function ScheduleList({ year = new Date().getFullYear() }) {
     }
   }, [sortedKeys.join(','), selectedDate]);
 
-  // 사용 가능한 월 목록 (전체 데이터 기준)
-  const availableMonths = [...new Set(
-    games.map(g => parseDateStr(g.gameDate)?.month).filter(Boolean)
-  )].sort((a, b) => a - b)
+  // ✅ 사용 가능한 월 목록을 3월~9월로 고정합니다. (DB에 데이터가 없어도 고정으로 띄워줌)
+  // 데이터가 있는 월만 띄우고 싶다면 이 부분을 원래대로 돌려주시면 됩니다.
+  const displayMonths = [3, 4, 5, 6, 7, 8, 9];
 
   return (
     <div className="schedule-list">
@@ -337,26 +336,15 @@ export default function ScheduleList({ year = new Date().getFullYear() }) {
       <div className="schedule-controls">
         {/* 월 선택 탭 */}
         <div className="schedule-month-tabs">
-          {availableMonths.length > 0
-            ? availableMonths.map(m => (
-              <button
-                key={m}
-                className={`month-tab ${m === month ? 'active' : ''}`}
-                onClick={() => setMonth(m)}
-              >
-                {m}월
-              </button>
-            ))
-            : [3, 4, 5, 6, 7, 8, 9, 10].map(m => (
-              <button
-                key={m}
-                className={`month-tab ${m === month ? 'active' : ''}`}
-                onClick={() => setMonth(m)}
-              >
-                {m}월
-              </button>
-            ))
-          }
+          {displayMonths.map(m => (
+            <button
+              key={m}
+              className={`month-tab ${m === month ? 'active' : ''}`}
+              onClick={() => setMonth(m)}
+            >
+              {m}월
+            </button>
+          ))}
         </div>
 
         {/* 동기화 버튼 */}
@@ -398,14 +386,47 @@ export default function ScheduleList({ year = new Date().getFullYear() }) {
             ◀
           </button>
           
+          {/* ✅ 투명 달력 인풋이 적용된 날짜 라벨 (Native Date Picker) */}
           <div style={{ textAlign: 'center', minWidth: '150px' }}>
-            <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 'bold' }}>
-              {(() => {
-                const d = new Date(selectedDate + 'T00:00:00')
-                return `${d.getMonth() + 1}월 ${d.getDate()}일 (${DAY_NAMES[d.getDay()]})`
-              })()}
-            </h3>
-            <span style={{ fontSize: '0.9rem', color: '#666' }}>
+            <label
+              style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}
+              onMouseOver={(e) => e.currentTarget.style.opacity = '0.7'}
+              onMouseOut={(e) => e.currentTarget.style.opacity = '1'}
+            >
+              <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 'bold', color: '#333' }}>
+                {(() => {
+                  const d = new Date(selectedDate + 'T00:00:00')
+                  return `${d.getMonth() + 1}월 ${d.getDate()}일 (${DAY_NAMES[d.getDay()]})`
+                })()}
+              </h3>
+              
+              {/* 투명 달력 인풋 (PC/모바일 호환) */}
+              <input 
+                type="date" 
+                value={selectedDate}
+                onChange={(e) => {
+                  if (e.target.value) {
+                    const newDateStr = e.target.value;
+                    const [y, m] = newDateStr.split('-');
+                    const selectedMonth = Number(m);
+                    
+                    // 선택한 날짜가 3월 ~ 9월 사이인지 검증
+                    if (selectedMonth >= 3 && selectedMonth <= 9) {
+                        setSelectedDate(newDateStr);
+                        setMonth(selectedMonth); // 선택한 날짜에 맞춰 상단 월 탭도 변경
+                    } else {
+                        alert('프로야구 정규 시즌인 3월부터 9월까지만 선택할 수 있습니다.');
+                    }
+                  }
+                }}
+                onClick={(e) => e.target.showPicker && e.target.showPicker()} 
+                style={{ 
+                  position: 'absolute', top: 0, left: 0, 
+                  width: '100%', height: '100%', opacity: 0, cursor: 'pointer', zIndex: 10
+                }}
+              />
+            </label>
+            <span style={{ fontSize: '0.9rem', color: '#666', display: 'block', marginTop: '4px' }}>
               {grouped[selectedDate]?.length || 0}경기
             </span>
           </div>
