@@ -25,20 +25,38 @@ const MEETUP_DUMMY = [
 ];
 
 function MeetupCard({ post, user, onClick, onDelete }) {
-  const displayTeam = post.supportTeamName || post.homeTeamName || "기타";
-  const teamKey = displayTeam.split(' ')[0];
-  const color = TEAM_COLORS[teamKey] || "#ef4b5f";
+  // 팀 코드나 이름을 한글 이름으로 변환하는 보조 함수 (컬러 매핑용)
+  const getTeamDisplayName = (team) => {
+    const nameMap = {
+      'DU': '두산', 'WO': '키움', 'SA': '삼성', 'LO': '롯데', 'HH': '한화', 
+      'KIA': 'KIA', 'KT': 'KT', 'LG': 'LG', 'NC': 'NC', 'SSG': 'SSG'
+    };
+    return nameMap[team] || team;
+  };
+
+  const homeTeam = getTeamDisplayName(post.homeTeamName || "홈");
+  const awayTeam = getTeamDisplayName(post.awayTeamName || "어웨이");
+  
+  const homeColor = TEAM_COLORS[homeTeam] || "#ef4b5f";
+  const awayColor = TEAM_COLORS[awayTeam] || "#666";
+  
   const isFull = (post.currentParticipants || 0) >= (post.maxParticipants || 1);
   const ratio = (post.currentParticipants || 0) / (post.maxParticipants || 1);
 
   return (
     <div className="card" onClick={() => onClick(post.id)} style={{ cursor: "pointer", overflow: "hidden", padding: 0, backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #eee', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-      <div style={{ height: 4, background: color }} />
+      <div style={{ height: 4, background: homeColor }} />
       <div style={{ padding: "20px" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-          <span style={{ fontSize: '11px', fontWeight: '800', color, background: color + "15", border: `1px solid ${color}30`, padding: "4px 10px", borderRadius: '12px' }}>
-            {displayTeam}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ fontSize: '10px', fontWeight: '800', color: homeColor, background: homeColor + "15", border: `1px solid ${homeColor}30`, padding: "3px 8px", borderRadius: '8px' }}>
+              {homeTeam}
+            </span>
+            <span style={{ fontSize: '10px', fontWeight: '700', color: '#ccc' }}>VS</span>
+            <span style={{ fontSize: '10px', fontWeight: '800', color: awayColor, background: awayColor + "15", border: `1px solid ${awayColor}30`, padding: "3px 8px", borderRadius: '8px' }}>
+              {awayTeam}
+            </span>
+          </div>
           <StatusBadge status={post.status} />
         </div>
         <div style={{ marginBottom: 10, fontSize: '16px', fontWeight: '800', color: '#222' }}>{post.title}</div>
@@ -48,13 +66,13 @@ function MeetupCard({ post, user, onClick, onDelete }) {
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
           <div style={{ flex: 1, height: 4, background: "#f5f5f5", borderRadius: 999, overflow: "hidden" }}>
-            <div style={{ height: "100%", width: `${ratio * 100}%`, background: isFull ? "#ccc" : color, borderRadius: 999, transition: "width 0.3s ease" }} />
+            <div style={{ height: "100%", width: `${ratio * 100}%`, background: isFull ? "#ccc" : homeColor, borderRadius: 999, transition: "width 0.3s ease" }} />
           </div>
           <span style={{ fontSize: 12, color: "#666", fontWeight: 700 }}>👤 {post.currentParticipants}/{post.maxParticipants}명</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: color, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold' }}>
+            <div style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: homeColor, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold' }}>
               {post.authorNickname?.slice(0, 1)}
             </div>
             <div style={{ fontSize: "13px", fontWeight: "700", color: "#333" }}>{post.authorNickname}</div>
@@ -80,17 +98,25 @@ export default function MeetupPage({ onSelectPost, initialOpen }) {
   const fetchMates = async () => {
     setLoading(true);
     try {
-      const teamId = filterTeam === 'ALL' ? null : TEAM_CODE_MAP[filterTeam];
+      const selectedTeamId = filterTeam === 'ALL' ? null : TEAM_CODE_MAP[filterTeam];
       const status = filterStatus === 'OPEN' ? 'OPEN' : null;
 
+      // API 파라미터에 teamId 외에 homeTeamId, awayTeamId를 고려할 수 있도록 구성 (백엔드 사양에 맞춤)
       const response = await api.get('/posts', {
-        params: { boardType: 'MATE', teamId, status, page: 0, size: 9 }
+        params: { 
+          boardType: 'MATE', 
+          teamId: selectedTeamId, // 전체 팀 필터링용
+          homeTeamId: selectedTeamId, // 홈 팀 필터링용
+          awayTeamId: selectedTeamId, // 어웨이 팀 필터링용
+          status, 
+          page: 0, 
+          size: 9 
+        }
       });
 
       const responseData = response.data;
       let postsArray = [];
 
-      // 팀원이 수정한 GlobalResponseAdvice & PagedResponse 래핑 해제 로직 통합
       if (responseData?.success && responseData?.data?.content) {
           postsArray = responseData.data.content;
       } else if (responseData?.data?.content) {
@@ -104,7 +130,7 @@ export default function MeetupPage({ onSelectPost, initialOpen }) {
       setPosts(postsArray);
     } catch (err) {
       console.error("데이터 로드 실패:", err);
-      setPosts(MEETUP_DUMMY); // 실패 시 더미 데이터 표시
+      setPosts(MEETUP_DUMMY);
     } finally {
       setLoading(false);
     }
@@ -114,12 +140,22 @@ export default function MeetupPage({ onSelectPost, initialOpen }) {
     fetchMates();
   }, [filterTeam, filterStatus]);
 
-  // 클라이언트 보조 필터
+  // 클라이언트 보조 필터: DB의 homeTeamId, awayTeamId를 직접 비교
   const filteredPosts = posts.filter(post => {
     if (filterTeam !== 'ALL') {
-      const teamName = post.supportTeamName || post.homeTeamName || '';
+      const targetId = TEAM_CODE_MAP[filterTeam];
+      
+      // 1. ID 기반 매칭 (DB 컬럼: home_team_id, away_team_id)
+      const isIdMatch = post.homeTeamId === targetId || post.awayTeamId === targetId;
+      
+      // 2. 이름 기반 매칭 (하위 호환성 및 표시용 필드 대응)
       const filterName = TEAMS.find(t => t.id === filterTeam)?.name || '';
-      if (!teamName.includes(filterName)) return false;
+      const isNameMatch = 
+        (post.homeTeamName || '').includes(filterName) || 
+        (post.awayTeamName || '').includes(filterName) ||
+        (post.supportTeamName || '').includes(filterName);
+
+      if (!isIdMatch && !isNameMatch) return false;
     }
     if (filterStatus === 'FULL') {
       if ((post.currentParticipants || 0) < (post.maxParticipants || 1)) return false;
@@ -140,14 +176,21 @@ export default function MeetupPage({ onSelectPost, initialOpen }) {
   const handleCreate = async (e) => {
     e.preventDefault();
     try {
-      await api.post('/posts', {
+      // 백엔드에서 기대하는 숫자형 ID로 변환하여 전송
+      const payload = {
         boardType: 'MATE',
-        ...formData
-      });
+        ...formData,
+        homeTeamId: TEAM_CODE_MAP[formData.homeTeamId] || formData.homeTeamId,
+        awayTeamId: TEAM_CODE_MAP[formData.awayTeamId] || formData.awayTeamId,
+      };
+
+      await api.post('/posts', payload);
       setIsModalOpen(false);
+      setFormData({ title: '', content: '', matchDate: '', homeTeamId: '', awayTeamId: '', maxParticipants: 2 }); // 폼 초기화
       fetchMates();
       alert('모집글이 등록되었습니다!');
     } catch (err) {
+      console.error("등록 실패:", err);
       alert('등록 실패');
     }
   };
