@@ -1,4 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
+import api from '../api/api';
 
 // ─── KBO 팀 컬러 ───────────────────────────────────────────────────
 const TEAM_COLORS = {
@@ -14,84 +16,34 @@ const TEAM_COLORS = {
   "키움": "#820024",
 };
 
-// ─── Mock 티켓 데이터 ──────────────────────────────────────────────
-const MOCK_TICKETS = [
-  {
-    id: 1,
-    homeTeam: 'LG',
-    awayTeam: 'SSG',
-    matchDate: '2026-04-05',
-    matchTime: '14:00',
-    stadium: '잠실종합운동장',
-    seatArea: '1루 레드석',
-    seatBlock: '202블록',
-    seatRow: 'F열 12번',
-    price: 45000,
-    status: 'selling',
-    author: '야구좋아',
-    createdAt: '2026-04-01',
-  },
-  {
-    id: 2,
-    homeTeam: '두산',
-    awayTeam: 'KIA',
-    matchDate: '2026-04-06',
-    matchTime: '17:00',
-    stadium: '잠실종합운동장',
-    seatArea: '3루 블루석',
-    seatBlock: '308블록',
-    seatRow: 'C열 5번',
-    price: 38000,
-    status: 'reserved',
-    author: '베어스팬',
-    createdAt: '2026-04-01',
-  },
-  {
-    id: 3,
-    homeTeam: 'KIA',
-    awayTeam: '삼성',
-    matchDate: '2026-04-06',
-    matchTime: '14:00',
-    stadium: '광주-기아 챔피언스 필드',
-    seatArea: '중앙 지정석',
-    seatBlock: '110블록',
-    seatRow: 'A열 22번',
-    price: 55000,
-    status: 'sold',
-    author: '타이거즈만세',
-    createdAt: '2026-03-31',
-  },
-  {
-    id: 4,
-    homeTeam: '한화',
-    awayTeam: 'NC',
-    matchDate: '2026-04-12',
-    matchTime: '14:00',
-    stadium: '한화생명 이글스파크',
-    seatArea: '외야 잔디석',
-    seatBlock: '자유석',
-    seatRow: '',
-    price: 15000,
-    status: 'selling',
-    author: '이글스사랑',
-    createdAt: '2026-04-01',
-  },
-  {
-    id: 5,
-    homeTeam: 'SSG',
-    awayTeam: '롯데',
-    matchDate: '2026-04-13',
-    matchTime: '14:00',
-    stadium: '인천SSG랜더스필드',
-    seatArea: '프리미엄 테이블석',
-    seatBlock: 'T1블록',
-    seatRow: '1열 3-4번',
-    price: 120000,
-    status: 'selling',
-    author: '랜더스왕팬',
-    createdAt: '2026-03-30',
-  },
-];
+// ─── 백엔드 팀 ID 매핑 ──────────────────────────────────────────
+const TEAM_ID_MAP = {
+  'LG': 1,
+  '두산': 2,
+  'SSG': 3,
+  'KIA': 4,
+  '삼성': 5,
+  '롯데': 6,
+  '한화': 7,
+  'KT': 8,
+  'NC': 9,
+  '키움': 10
+};
+
+const getShortName = (fullName) => {
+  if (!fullName) return "알수없음";
+  if (fullName.includes("LG")) return "LG";
+  if (fullName.includes("두산")) return "두산";
+  if (fullName.includes("SSG")) return "SSG";
+  if (fullName.includes("KIA")) return "KIA";
+  if (fullName.includes("삼성")) return "삼성";
+  if (fullName.includes("롯데")) return "롯데";
+  if (fullName.includes("한화")) return "한화";
+  if (fullName.includes("KT") || fullName.includes("케이티")) return "KT";
+  if (fullName.includes("NC")) return "NC";
+  if (fullName.includes("키움")) return "키움";
+  return fullName;
+};
 
 // ─── 상수 ──────────────────────────────────────────────────────────
 const STADIUMS = [
@@ -126,12 +78,18 @@ function TicketStatusBadge({ status }) {
 }
 
 // ─── 티켓 카드 컴포넌트 ────────────────────────────────────────────
-function TicketCard({ ticket }) {
+function TicketCard({ ticket, onOpenDetail }) {
   const homeColor = TEAM_COLORS[ticket.homeTeam] || '#e94560';
   const isSold = ticket.status === 'sold';
 
   return (
-    <div className={`ticket-card ${isSold ? 'ticket-card--sold' : ''}`}>
+    <div
+      className={`ticket-card ${isSold ? 'ticket-card--sold' : ''}`}
+      onClick={() => !isSold && onOpenDetail(ticket)}
+      role={isSold ? undefined : 'button'}
+      tabIndex={isSold ? -1 : 0}
+      onKeyDown={(e) => e.key === 'Enter' && !isSold && onOpenDetail(ticket)}
+    >
       {/* 팀 컬러 상단 악센트 */}
       <div className="ticket-card__accent" style={{ background: `linear-gradient(135deg, ${homeColor}, ${homeColor}cc)` }} />
 
@@ -170,13 +128,127 @@ function TicketCard({ ticket }) {
         {/* 가격 & 작성자 */}
         <div className="ticket-card__footer">
           <div className="ticket-card__price">
-            ₩{ticket.price.toLocaleString()}
+            ₩{Number(ticket.price || 0).toLocaleString()}
           </div>
           <div className="ticket-card__author">
             <div className="ticket-card__avatar" style={{ background: homeColor }}>
-              {ticket.author.slice(0, 1)}
+              {(ticket.author || '익').slice(0, 1)}
             </div>
-            <span className="ticket-card__author-name">{ticket.author}</span>
+            <span className="ticket-card__author-name">{ticket.author || '익명'}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── 티켓 상세 모달 ───────────────────────────────────────────────
+function TicketDetailModal({ ticket, onClose, onContact, currentUser }) {
+  const overlayRef = useRef(null);
+  const homeColor = TEAM_COLORS[ticket.homeTeam] || '#e94560';
+  const awayColor = TEAM_COLORS[ticket.awayTeam] || '#666';
+  const cfg = STATUS_CONFIG[ticket.status] || STATUS_CONFIG.selling;
+  const isMyTicket = currentUser && currentUser.nickname === ticket.author;
+
+  useEffect(() => {
+    const handler = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onClose]);
+
+  const handleOverlayClick = (e) => {
+    if (e.target === overlayRef.current) onClose();
+  };
+
+  return (
+    <div className="ticket-modal-overlay" ref={overlayRef} onClick={handleOverlayClick}>
+      <div className="ticket-modal ticket-detail-modal" role="dialog" aria-modal="true">
+        {/* 팀 컬러 상단 배너 */}
+        <div className="ticket-detail__banner" style={{ background: `linear-gradient(135deg, ${homeColor} 0%, ${homeColor}99 100%)` }}>
+          <div className="ticket-detail__banner-teams">
+            <span className="ticket-detail__banner-team">{ticket.homeTeam}</span>
+            <span className="ticket-detail__banner-vs">VS</span>
+            <span className="ticket-detail__banner-team" style={{ color: awayColor === '#666' ? '#fff' : '#fff' }}>{ticket.awayTeam}</span>
+          </div>
+          <button className="ticket-modal__close ticket-detail__close" onClick={onClose} aria-label="닫기">✕</button>
+        </div>
+
+        {/* 상세 내용 */}
+        <div className="ticket-detail__body">
+          {/* 상태 + 날짜 */}
+          <div className="ticket-detail__row ticket-detail__row--between">
+            <span
+              className="ticket-status-badge"
+              style={{ background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}
+            >
+              {cfg.label}
+            </span>
+            <span className="ticket-detail__date">📅 {ticket.matchDate} {ticket.matchTime}</span>
+          </div>
+
+          {/* 정보 그리드 */}
+          <div className="ticket-detail__info-grid">
+            <div className="ticket-detail__info-item">
+              <span className="ticket-detail__info-label">🏟️ 경기장</span>
+              <span className="ticket-detail__info-value">{ticket.stadium}</span>
+            </div>
+            <div className="ticket-detail__info-item">
+              <span className="ticket-detail__info-label">💺 좌석 구역</span>
+              <span className="ticket-detail__info-value">{ticket.seatArea}</span>
+            </div>
+            {ticket.seatBlock && (
+              <div className="ticket-detail__info-item">
+                <span className="ticket-detail__info-label">📦 블록</span>
+                <span className="ticket-detail__info-value">{ticket.seatBlock}</span>
+              </div>
+            )}
+            {ticket.seatRow && (
+              <div className="ticket-detail__info-item">
+                <span className="ticket-detail__info-label">🔢 열·번호</span>
+                <span className="ticket-detail__info-value">{ticket.seatRow}</span>
+              </div>
+            )}
+          </div>
+
+          {/* 설명 */}
+          {ticket.description && (
+            <div className="ticket-detail__desc">
+              <p className="ticket-detail__desc-label">📝 추가 정보</p>
+              <p className="ticket-detail__desc-text">{ticket.description}</p>
+            </div>
+          )}
+
+          {/* 가격 + 작성자 */}
+          <div className="ticket-detail__footer">
+            <div>
+              <div className="ticket-detail__price-label">양도 가격</div>
+              <div className="ticket-detail__price">₩{Number(ticket.price || 0).toLocaleString()}</div>
+            </div>
+            <div className="ticket-detail__author">
+              <div className="ticket-card__avatar" style={{ background: homeColor, width: 36, height: 36, fontSize: 15 }}>
+                {(ticket.author || '익').slice(0, 1)}
+              </div>
+              <div>
+                <div className="ticket-detail__author-name">{ticket.author || '익명'}</div>
+                <div className="ticket-detail__author-date">{ticket.createdAt || '방금 전'} 등록</div>
+              </div>
+            </div>
+          </div>
+
+          {/* 액션 버튼 */}
+          <div className="ticket-detail__actions">
+            <button className="ticket-modal__btn-cancel" onClick={onClose}>닫기</button>
+            {!isMyTicket && ticket.status !== 'sold' && (
+              <button
+                className="ticket-detail__contact-btn"
+                onClick={() => { onClose(); onContact(ticket); }}
+              >
+                💬 연락하기
+              </button>
+            )}
+            {isMyTicket && (
+              <span className="ticket-detail__mine-badge">내가 등록한 티켓</span>
+            )}
           </div>
         </div>
       </div>
@@ -198,27 +270,316 @@ function FilterSelect({ label, icon, value, onChange, options }) {
   );
 }
 
+// ─── 글쓰기 모달 ───────────────────────────────────────────────────
+const EMPTY_FORM = {
+  homeTeam: 'LG',
+  awayTeam: '두산',
+  matchDate: '',
+  matchTime: '14:00',
+  stadium: '잠실종합운동장',
+  seatArea: '',
+  seatBlock: '',
+  seatRow: '',
+  price: '',
+  description: '',
+};
+
+function TicketWriteModal({ onClose, onSubmit }) {
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [submitting, setSubmitting] = useState(false);
+  const overlayRef = useRef(null);
+
+  // ESC 키로 닫기
+  useEffect(() => {
+    const handler = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onClose]);
+
+  // 배경 클릭으로 닫기
+  const handleOverlayClick = (e) => {
+    if (e.target === overlayRef.current) onClose();
+  };
+
+  const set = (key, val) => setForm((prev) => ({ ...prev, [key]: val }));
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!form.matchDate) { alert('경기 날짜를 선택해주세요.'); return; }
+    if (!form.seatArea)  { alert('좌석 구역을 입력해주세요.'); return; }
+    if (!form.price || isNaN(Number(form.price))) { alert('양도 가격을 숫자로 입력해주세요.'); return; }
+    setSubmitting(true);
+    try {
+      await onSubmit({ ...form, price: Number(form.price) });
+      onClose();
+    } catch (err) {
+      alert('등록 중 오류가 발생했습니다.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const teams = ['LG', '두산', 'SSG', 'KIA', '삼성', '롯데', '한화', 'KT', 'NC', '키움'];
+  const times = ['14:00', '17:00', '18:00', '18:30', '19:00'];
+
+  return (
+    <div className="ticket-modal-overlay" ref={overlayRef} onClick={handleOverlayClick}>
+      <div className="ticket-modal" role="dialog" aria-modal="true" aria-label="티켓 양도 글쓰기">
+        {/* 헤더 */}
+        <div className="ticket-modal__header">
+          <h3 className="ticket-modal__title">🎫 티켓 양도 등록</h3>
+          <button className="ticket-modal__close" onClick={onClose} aria-label="닫기">✕</button>
+        </div>
+
+        <form className="ticket-modal__form" onSubmit={handleSubmit}>
+          {/* 팀 선택 */}
+          <div className="ticket-form-row ticket-form-row--2col">
+            <div className="ticket-form-field">
+              <label className="ticket-form-label">홈팀 <span className="required">*</span></label>
+              <select className="ticket-form-select" value={form.homeTeam} onChange={(e) => set('homeTeam', e.target.value)}>
+                {teams.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div className="ticket-form-field">
+              <label className="ticket-form-label">원정팀 <span className="required">*</span></label>
+              <select className="ticket-form-select" value={form.awayTeam} onChange={(e) => set('awayTeam', e.target.value)}>
+                {teams.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+          </div>
+
+          {/* 날짜 & 시간 */}
+          <div className="ticket-form-row ticket-form-row--2col">
+            <div className="ticket-form-field">
+              <label className="ticket-form-label">경기 날짜 <span className="required">*</span></label>
+              <input
+                type="date"
+                className="ticket-form-input"
+                value={form.matchDate}
+                onChange={(e) => set('matchDate', e.target.value)}
+                min={new Date().toISOString().split('T')[0]}
+                required
+              />
+            </div>
+            <div className="ticket-form-field">
+              <label className="ticket-form-label">경기 시간</label>
+              <select className="ticket-form-select" value={form.matchTime} onChange={(e) => set('matchTime', e.target.value)}>
+                {times.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+          </div>
+
+          {/* 경기장 */}
+          <div className="ticket-form-field">
+            <label className="ticket-form-label">경기장 <span className="required">*</span></label>
+            <select className="ticket-form-select" value={form.stadium} onChange={(e) => set('stadium', e.target.value)}>
+              {STADIUMS.slice(1).map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+
+          {/* 좌석 정보 */}
+          <div className="ticket-form-row ticket-form-row--3col">
+            <div className="ticket-form-field">
+              <label className="ticket-form-label">좌석 구역 <span className="required">*</span></label>
+              <input
+                type="text"
+                className="ticket-form-input"
+                placeholder="예) 1루 레드석"
+                value={form.seatArea}
+                onChange={(e) => set('seatArea', e.target.value)}
+              />
+            </div>
+            <div className="ticket-form-field">
+              <label className="ticket-form-label">블록</label>
+              <input
+                type="text"
+                className="ticket-form-input"
+                placeholder="예) 202블록"
+                value={form.seatBlock}
+                onChange={(e) => set('seatBlock', e.target.value)}
+              />
+            </div>
+            <div className="ticket-form-field">
+              <label className="ticket-form-label">열·번호</label>
+              <input
+                type="text"
+                className="ticket-form-input"
+                placeholder="예) F열 12번"
+                value={form.seatRow}
+                onChange={(e) => set('seatRow', e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* 가격 */}
+          <div className="ticket-form-field">
+            <label className="ticket-form-label">양도 가격 (원) <span className="required">*</span></label>
+            <input
+              type="number"
+              className="ticket-form-input"
+              placeholder="예) 45000"
+              value={form.price}
+              onChange={(e) => set('price', e.target.value)}
+              min="0"
+              step="1000"
+            />
+          </div>
+
+          {/* 설명 */}
+          <div className="ticket-form-field">
+            <label className="ticket-form-label">추가 설명</label>
+            <textarea
+              className="ticket-form-textarea"
+              rows={3}
+              placeholder="거래 방법, 좌석 상세 정보, 연락 방법 등을 자유롭게 입력하세요."
+              value={form.description}
+              onChange={(e) => set('description', e.target.value)}
+            />
+          </div>
+
+          {/* 버튼 영역 */}
+          <div className="ticket-modal__actions">
+            <button type="button" className="ticket-modal__btn-cancel" onClick={onClose} disabled={submitting}>
+              취소
+            </button>
+            <button type="submit" className="ticket-modal__btn-submit" disabled={submitting}>
+              {submitting ? '등록 중...' : '🎫 티켓 등록'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // ─── 메인 페이지 ───────────────────────────────────────────────────
-export default function TicketTransferBoard() {
+export default function TicketTransferBoard({ onOpenChat }) {
+  const { user } = useAuth();
   const [filterDate, setFilterDate] = useState('전체');
   const [filterStadium, setFilterStadium] = useState('전체');
   const [filterTeam, setFilterTeam] = useState('전체');
+  const [showWriteModal, setShowWriteModal] = useState(false);
+  const [selectedTicket, setSelectedTicket] = useState(null);
+  const [tickets, setTickets] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // 날짜 옵션 생성 (mock 데이터에서 추출)
-  const dateOptions = useMemo(() => {
-    const dates = [...new Set(MOCK_TICKETS.map((t) => t.matchDate))].sort();
-    return ['전체', ...dates];
+  useEffect(() => {
+    fetchTickets();
   }, []);
+
+  const fetchTickets = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      // 올바른 엔드포인트: /posts?boardType=TRANSFER
+      const response = await api.get('/posts?boardType=TRANSFER');
+      const data = response.data;
+      let items = [];
+      if (data && data.data) {
+        items = Array.isArray(data.data) ? data.data : (data.data.content || []);
+      } else if (data) {
+        items = Array.isArray(data) ? data : (data.content || []);
+      }
+      
+      // ✅ 데이터 정규화: 백엔드 필드명(TransferResponse)을 프론트 규격에 매핑
+      const normalized = items.map(t => {
+        const homeShort = getShortName(t.homeTeamName || t.homeTeam);
+        const awayShort = getShortName(t.awayTeamName || t.awayTeam);
+        
+        return {
+          ...t,
+          author: t.authorNickname || t.author || t.nickname || t.userNickname || '익명',
+          homeTeam: homeShort,
+          awayTeam: awayShort,
+          matchDate: t.matchDate || '',
+          matchTime: t.matchTime || '시간 미정', // PostDto.TransferResponse엔 matchTime이 없음
+          price: t.ticketPrice ?? t.price ?? 0,
+          stadium: t.stadium || STADIUMS[TEAM_ID_MAP[homeShort]] || '경기장 미상',
+          seatArea: t.seatArea || '',
+          seatBlock: '', // seatArea에 통합됨
+          seatRow: '',
+          description: t.content || '',
+          createdAt: t.createdAt ? t.createdAt.split('T')[0] : '방금 전',
+          // 상태 문자열 통일
+          status: t.status === 'CLOSED' ? 'sold' : (t.status === 'RESERVED' ? 'reserved' : 'selling'),
+        };
+      });
+      
+      setTickets(normalized);
+    } catch (err) {
+      console.error('Failed to fetch tickets:', err);
+      setError('티켓 목록을 불러오는데 실패했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 연락하기 → 1:1 DM 열기
+  const handleContact = (ticket) => {
+    if (!user) {
+      alert('로그인이 필요합니다.');
+      return;
+    }
+    if (onOpenChat) {
+      onOpenChat({
+        id: `ticket-dm-${ticket.id}-${ticket.author}`,
+        roomType: 'ONE_ON_ONE',
+        title: ticket.author,
+        lastMessage: '',
+        lastMessageAt: new Date().toISOString(),
+        unreadCount: 0,
+        crewTeam: '',
+        dmTargetNickname: ticket.author,
+      });
+    }
+  };
+
+  const handleWriteClick = () => {
+    if (!user) {
+      alert('로그인이 필요합니다. 홈 화면의 로그인 폼을 이용해주세요.');
+      return;
+    }
+    setShowWriteModal(true);
+  };
+
+  const handleTicketSubmit = async (formData) => {
+    const combinedSeatArea = [formData.seatArea, formData.seatBlock, formData.seatRow]
+      .filter(Boolean)
+      .join(" ");
+
+    const payload = {
+      boardType: 'TRANSFER',
+      title: `[양도] ${formData.homeTeam} vs ${formData.awayTeam} (${formData.matchDate})`,
+      content: formData.description || '티켓 양도합니다.',
+      matchDate: formData.matchDate,
+      homeTeamId: TEAM_ID_MAP[formData.homeTeam],
+      awayTeamId: TEAM_ID_MAP[formData.awayTeam],
+      seatArea: combinedSeatArea,
+      ticketPrice: Number(formData.price),
+    };
+
+    await api.post('/posts', payload);
+    
+    // 등록 성공 시 목록 갱신
+    await fetchTickets();
+  };
+
+  // 날짜 옵션 생성 (실제 데이터에서 추출)
+  const dateOptions = useMemo(() => {
+    const dates = [...new Set(tickets.map((t) => t.matchDate))].sort();
+    return ['전체', ...dates];
+  }, [tickets]);
 
   // 필터링
   const filtered = useMemo(() => {
-    return MOCK_TICKETS.filter((t) => {
+    return tickets.filter((t) => {
       const dateMatch = filterDate === '전체' || t.matchDate === filterDate;
       const stadiumMatch = filterStadium === '전체' || t.stadium === filterStadium;
       const teamMatch = filterTeam === '전체' || t.homeTeam === filterTeam || t.awayTeam === filterTeam;
       return dateMatch && stadiumMatch && teamMatch;
     });
-  }, [filterDate, filterStadium, filterTeam]);
+  }, [tickets, filterDate, filterStadium, filterTeam]);
 
   return (
     <div className="ticket-transfer-page">
@@ -228,7 +589,7 @@ export default function TicketTransferBoard() {
           <h2 className="page-title">🎫 티켓 양도</h2>
           <p className="page-subtitle">원하는 경기의 티켓을 양도하거나 양수하세요</p>
         </div>
-        <button className="ticket-write-btn" id="ticket-write-btn">
+        <button className="ticket-write-btn" id="ticket-write-btn" onClick={handleWriteClick}>
           ✏️ 글쓰기
         </button>
       </div>
@@ -262,10 +623,20 @@ export default function TicketTransferBoard() {
       </div>
 
       {/* ── 티켓 카드 그리드 ── */}
-      {filtered.length > 0 ? (
+      {loading ? (
+        <div className="empty-state">
+          <div className="empty-icon">⏳</div>
+          <p>티켓 목록을 불러오는 중입니다...</p>
+        </div>
+      ) : error ? (
+        <div className="empty-state">
+          <div className="empty-icon">⚠️</div>
+          <p>{error}</p>
+        </div>
+      ) : filtered.length > 0 ? (
         <div className="ticket-card-grid" id="ticket-card-grid">
           {filtered.map((ticket) => (
-            <TicketCard key={ticket.id} ticket={ticket} />
+            <TicketCard key={ticket.id} ticket={ticket} onOpenDetail={setSelectedTicket} />
           ))}
         </div>
       ) : (
@@ -273,6 +644,24 @@ export default function TicketTransferBoard() {
           <div className="empty-icon">🎫</div>
           <p>검색 조건에 맞는 티켓이 없습니다</p>
         </div>
+      )}
+
+      {/* ── 글쓰기 모달 ── */}
+      {showWriteModal && (
+        <TicketWriteModal
+          onClose={() => setShowWriteModal(false)}
+          onSubmit={handleTicketSubmit}
+        />
+      )}
+
+      {/* ── 티켓 상세 모달 ── */}
+      {selectedTicket && (
+        <TicketDetailModal
+          ticket={selectedTicket}
+          currentUser={user}
+          onClose={() => setSelectedTicket(null)}
+          onContact={handleContact}
+        />
       )}
     </div>
   );

@@ -117,7 +117,7 @@ export default function App() {
 
       case 'ticket':
       case 'ticket-transfer':
-        return <TicketTransferBoard />;
+        return <TicketTransferBoard onOpenChat={handleOpenChat} />;
 
       case 'my':
         return <MyPage />;
