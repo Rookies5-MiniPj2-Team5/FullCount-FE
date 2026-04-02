@@ -89,7 +89,7 @@ export default function HomePage({ onNavigate }) {
               { icon: '🤝', label: '직관 메이트 구하기', action: 'meetup-create' },
               { icon: '🙌', label: '크루 가입하기', action: 'crew' },
               { icon: '🗓️', label: '경기일정 확인', action: 'schedule' },
-              { icon: '🎫', label: '티켓 양도하기', action: 'meetup' },
+              { icon: '🎫', label: '티켓 양도하기', action: 'ticket-transfer' },
             ].map(m => (
               <div
                 key={m.label}
@@ -112,7 +112,7 @@ export default function HomePage({ onNavigate }) {
               <div
                 key={i}
                 className={`recruit-card${p.status === 'closed' ? ' recruit-card--closed' : ''}`}
-                onClick={() => p.status !== 'closed' && onNavigate && onNavigate('meetup')}
+                onClick={() => p.status !== 'closed' && onNavigate && onNavigate('ticket-transfer')}
               >
                 {/* 상단: 팀 배지 + 상태 뱃지 */}
                 <div className="recruit-card__head">
