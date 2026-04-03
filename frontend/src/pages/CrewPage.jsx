@@ -96,7 +96,7 @@ function CrewCard({ crew, onClick }) {
 }
 
 // ─── 크루 페이지 메인 ───
-export default function CrewPage({ currentUser }) {
+export default function CrewPage({ currentUser, onOpenChat }) {
   const [view, setView] = useState("list");
   const [crews, setCrews] = useState(DUMMY_RESPONSE);
   const [selectedCrew, setSelectedCrew] = useState(null);
@@ -147,6 +147,25 @@ export default function CrewPage({ currentUser }) {
     if (filterStatus === 'FULL' && crew.currentParticipants < crew.maxParticipants) return false;
     return true;
   });
+
+  const handleOpenDm = (targetNickname) => {
+    if (!currentUser) {
+      alert('로그인이 필요합니다.');
+      return;
+    }
+    if (onOpenChat) {
+      onOpenChat({
+        id: `dm-${[currentUser.nickname, targetNickname].sort().join('-')}`,
+        crewId: selectedCrew?.id, // ID 해결을 위해 추가
+        roomType: 'ONE_ON_ONE',
+        title: targetNickname,
+        dmTargetNickname: targetNickname,
+        lastMessage: '',
+        lastMessageAt: new Date().toISOString(),
+        unreadCount: 0,
+      });
+    }
+  };
 
   const goTo = (v, crew = null) => {
     if (crew) setSelectedCrew(crew);
@@ -230,9 +249,9 @@ export default function CrewPage({ currentUser }) {
       {view === "detail" && selectedCrew && (
         <CrewDetailPage
           crew={selectedCrew}
-          currentUserId={currentUser?.id}
+          currentUser={currentUser}
           onBack={() => setView("list")}
-          onOpenDmChat={(crew) => goTo("dmChat", crew)}
+          onOpenDmChat={(nickname) => handleOpenDm(nickname)}
         />
       )}
 
@@ -252,11 +271,27 @@ export default function CrewPage({ currentUser }) {
           onClose={() => setIsCreateModalOpen(false)}
           onSubmit={async (formData) => {
             try {
-              await api.post('/posts', { boardType: 'CREW', ...formData });
+              const payload = {
+                boardType: 'CREW',
+                title: formData.title,
+                content: formData.content,
+                matchDate: formData.matchDate,
+                stadium: formData.stadium,
+                supportTeamId: formData.teamId, // 백엔드 필수 필드 반영
+                homeTeamId: formData.teamId,
+                awayTeamId: formData.teamId,
+                maxParticipants: formData.maxParticipants,
+                maxMember: formData.maxParticipants, // 백엔드 필드명 확인용 중복 전송
+                isPublic: formData.isPublic,
+              };
+              await api.post('/posts', payload);
               setIsCreateModalOpen(false);
               fetchCrews();
+              alert('모집글이 등록되었습니다!');
             } catch (err) {
-              alert("생성 실패");
+              console.error("Crew creation error:", err);
+              const errMsg = err.response?.data?.message || "입력 정보를 다시 확인해주세요.";
+              alert(`생성 실패: ${errMsg}`);
             }
           }}
         />

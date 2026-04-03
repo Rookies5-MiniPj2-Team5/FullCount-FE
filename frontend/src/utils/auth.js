@@ -1,15 +1,15 @@
 import { jwtDecode } from 'jwt-decode';
 
 export const setToken = (token) => {
-  localStorage.setItem('accessToken', token);
+  sessionStorage.setItem('accessToken', token);
 };
 
 export const getToken = () => {
-  return localStorage.getItem('accessToken');
+  return sessionStorage.getItem('accessToken');
 };
 
 export const removeToken = () => {
-  localStorage.removeItem('accessToken');
+  sessionStorage.removeItem('accessToken');
 };
 
 export const isAuthenticated = () => {

@@ -78,18 +78,13 @@ export function subscribeToRoom(client, roomId, onMessage) {
   return null;
 }
 
-/**
- * 메시지 발행 (전송)
- * @param {Client} client
- * @param {number} roomId
- * @param {{ type: string, senderId: number, content: string }} payload
- */
+// 메시지 발행 (전송)
 export function sendMessage(client, roomId, payload) {
   // TODO: BE 연동 시 주석 해제
   // client?.active && client.publish({
   //   destination: `/app/chat/${roomId}`,
   //   body: JSON.stringify({ roomId, ...payload }),
-  //   headers: { Authorization: `Bearer ${localStorage.getItem("accessToken")}` },
+  //   headers: { Authorization: `Bearer ${sessionStorage.getItem("accessToken")}` },
   // });
 
   console.warn("[chat.js] sendMessage: 더미 모드", { roomId, payload });
@@ -100,7 +95,7 @@ export function sendMessage(client, roomId, payload) {
 // ─────────────────────────────────────────────────────
 const authHeader = () => ({
   "Content-Type": "application/json",
-  Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+  Authorization: `Bearer ${sessionStorage.getItem("accessToken")}`,
 });
 
 /**

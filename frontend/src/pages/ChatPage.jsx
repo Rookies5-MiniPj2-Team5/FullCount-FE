@@ -22,6 +22,8 @@ const isSameDay = (a, b) =>
 
 export default function ChatPage({
   crew,
+  crewId, // ID 해결용으로 추가
+  postId, // ID 해결용으로 추가 (Meetup/Transfer)
   roomType = "GROUP",
   roomId: initialRoomId,
   currentUser,
@@ -32,7 +34,7 @@ export default function ChatPage({
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState("");
   const [connected, setConnected] = useState(false);
-  const [roomId, setRoomId] = useState(initialRoomId);
+  const [roomId, setRoomId] = useState(initialRoomId); // 실제 해결된 ID 저장용
   const [isFullSize, setIsFullSize] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
@@ -48,27 +50,54 @@ export default function ChatPage({
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // ─── 메시지 규격 통일 ──────────────────────────
+  const normalizeMsg = useCallback((raw) => {
+    return {
+      ...raw,
+      messageId: raw.messageId || raw.id || Date.now() + Math.random(),
+      senderId: raw.senderId || raw.userId,
+      senderNickname: raw.senderNickname || raw.sender || raw.nickname || "알 수 없음",
+      content: raw.content || raw.message || "",
+      timestamp: raw.timestamp || raw.createdAt || new Date().toISOString(),
+      type: raw.type || "CHAT",
+    };
+  }, []);
+
   useEffect(() => {
     if (isConnecting.current) return;
 
     const initChat = async () => {
       isConnecting.current = true;
+      let currentRid = initialRoomId;
 
-      let currentRid = roomId;
+      // 🌟 [ID Resolution] 만약 roomId가 숫자가 아니라면 (dm-A-B 등), 서버에서 실제 ID를 받아옴
+      let isTempId = typeof currentRid === "string" && currentRid.startsWith("dm-");
 
-      if (isDm && !currentRid) {
+      if (isDm && (isTempId || !currentRid)) {
         try {
-          const res = await api.post(`/api/chat/dm/crew/${crew.id}`);
-          currentRid = res.data.id;
-          setRoomId(currentRid);
+          console.log("[Chat] DM ID 해결 중...", { crewId, postId });
+          let res;
+          if (crewId) {
+            res = await api.post(`/chat/dm/crew/${crewId}`);
+          } else if (postId) {
+            res = await api.post(`/chat/dm/transfer/${postId}`);
+          }
+          
+          if (res?.data?.id || res?.data?.data?.id) {
+            currentRid = res.data.id || res.data.data.id;
+            console.log("[Chat] 실 ID 해결 성공:", currentRid);
+            setRoomId(currentRid);
+            isTempId = false; // 🌟 해결되었으므로 false로 갱신!
+          }
         } catch (err) {
-          console.error("DM 채팅방 생성 실패:", err);
+          console.error("DM 채팅방 해결 실패:", err);
           isConnecting.current = false;
           return;
         }
       }
 
-      if (!currentRid) {
+      if (!currentRid || isTempId) {
+        console.warn("[Chat] 유효한 roomId가 없어 연결을 중단합니다.", { currentRid, isTempId });
         isConnecting.current = false;
         return;
       }
@@ -78,54 +107,44 @@ export default function ChatPage({
       client.debug = null;
       clientRef.current = client;
 
-      client.connect(
-        {},
-        () => {
-          console.log(`[Chat] 연결 성공 - roomId: ${currentRid}`);
-          setConnected(true);
+      client.connect({}, () => {
+        console.log(`[Chat] 연결 성공 - roomId: ${currentRid}`);
+        setConnected(true);
 
-          client.subscribe(`/topic/chat/${currentRid}`, (frame) => {
-            try {
-              const newMessage = JSON.parse(frame.body);
-              console.log("[Chat] Received:", newMessage);
-              const normalizedMsg = {
-                ...newMessage,
-                content: newMessage.content || newMessage.message,
-                senderNickname: newMessage.senderNickname || newMessage.sender,
-                timestamp: newMessage.timestamp || new Date().toISOString(),
-              };
-              setMessages((prev) => [...prev, normalizedMsg]);
-            } catch (e) {
-              console.error("[Chat] 메시지 파싱 오류:", e);
-            }
-          });
+        client.subscribe(`/topic/chat/${currentRid}`, (frame) => {
+          try {
+            const raw = JSON.parse(frame.body);
+            setMessages((prev) => [...prev, normalizeMsg(raw)]);
+          } catch (e) {
+            console.error("[Chat] 메시지 파싱 오류:", e);
+          }
+        });
 
-          api.get(`/chat/rooms/${currentRid}/messages`)
-            .then(res => {
-              const messages = res.data.data?.content || [];
-              setMessages(messages.reverse());
-            })
-            .catch(err => console.error("메시지 조회 실패:", err));
-        },
-        (error) => {
-          console.error("[Chat] STOMP 연결 실패:", error);
-          setConnected(false);
-          isConnecting.current = false;
-        }
-      );
+        api.get(`/chat/${currentRid}/messages`)
+          .then(res => {
+            const rawContent = res.data.data?.content || res.data.data || res.data.content || res.data || [];
+            const rawMsgs = Array.isArray(rawContent) ? rawContent : (rawContent.content || []);
+            setMessages(rawMsgs.map(normalizeMsg).reverse());
+          })
+          .catch(err => console.error("메시지 조회 실패:", err));
+      }, (err) => {
+        console.error("[Chat] STOMP 연결 실패:", err);
+        setConnected(false);
+        isConnecting.current = false;
+      });
     };
 
     initChat();
 
     return () => {
       if (clientRef.current && clientRef.current.connected) {
-        clientRef.current.disconnect(() => console.log("[Chat] 연결 해제"));
+        clientRef.current.disconnect();
       }
       clientRef.current = null;
       isConnecting.current = false;
       setConnected(false);
     };
-  }, [roomId, isDm, crew?.id]);
+  }, [initialRoomId, isDm, crewId, postId, normalizeMsg]);
 
   useEffect(() => {
     const el = msgListRef.current;
@@ -140,9 +159,9 @@ export default function ChatPage({
 
   useEffect(() => {
     if (!roomId) return;
-    api.get(`/chat/rooms/${roomId}`)
+    api.get(`/chat/${roomId}`)
       .then(res => {
-        const data = res.data.data;
+        const data = res.data.data || res.data;
         setParticipants(data?.participants || []);
       })
       .catch(err => console.error("참여자 조회 실패:", err));
@@ -180,7 +199,11 @@ export default function ChatPage({
     }
   };
 
-  const isMe = (msg) => msg.senderId === currentUser?.id;
+  const isMe = (msg) => {
+    if (!currentUser) return false;
+    if (msg.senderId && currentUser.id) return msg.senderId === currentUser.id;
+    return msg.senderNickname === currentUser.nickname;
+  };
   const accentColor = isDm ? "#7c3aed" : "#1d4ed8";
 
   // 날짜 구분선 표시 여부

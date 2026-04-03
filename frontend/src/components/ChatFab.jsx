@@ -61,7 +61,7 @@ function RoomItem({ room, onClick }) {
 }
 
 // ─── 메인 FAB 컴포넌트 ────────────────────────────────
-export default function ChatFab({ currentUser, onOpenChat }) {
+export default function ChatFab({ currentUser, onOpenChat, refreshToggle }) {
   const [open, setOpen] = useState(false);
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -84,12 +84,12 @@ export default function ChatFab({ currentUser, onOpenChat }) {
     }
   };
 
-  // 컴포넌트 마운트 시 + 30초마다 갱신
+  // 컴포넌트 마운트 시 + 30초마다 갱신 + 알림 수신 시 즉시 갱신
   useEffect(() => {
     loadRooms();
     const interval = setInterval(loadRooms, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [refreshToggle]);
 
   // 팝업 외부 클릭 시 닫기
   useEffect(() => {
@@ -109,7 +109,7 @@ export default function ChatFab({ currentUser, onOpenChat }) {
     onOpenChat?.({
       id: room.chatRoomId,
       title: room.title,
-      roomType: room.Type,
+      roomType: room.roomType,
     });
   };
 
