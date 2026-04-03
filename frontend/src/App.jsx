@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from './context/AuthContext'
 import MeetupPage from './pages/MeetupPage'
-import MeetupDetailPage from './pages/MeetupDetailPage'
+import Meetupdetailpage from './pages/Meetupdetailpage'
 import CrewPage from './pages/CrewPage'
 import MyPage from './pages/MyPage'
 import SchedulePage from './pages/SchedulePage'
@@ -9,6 +9,7 @@ import HomePage from './pages/HomePage'
 import SignupPage from './pages/SignupPage'
 import ChatPage from './pages/ChatPage'
 import ChatFab from './components/ChatFab'
+import GlobalChatListener from './components/GlobalChatListener'
 import TicketTransferBoard from './pages/TicketTransferBoard'
 import './index.css'
 
@@ -26,6 +27,7 @@ export default function App() {
   const [tab, setTab] = useState('home')
   const [selectedPostId, setSelectedPostId] = useState(null)
   const [chatRoom, setChatRoom] = useState(null)
+  const [roomRefreshToggle, setRoomRefreshToggle] = useState(0) // ChatFab 리스트 갱신용
 
   // 🌟 1. 브라우저 주소창과 React 상태(State) 동기화 (뒤로가기 해결)
   useEffect(() => {
@@ -89,6 +91,22 @@ export default function App() {
     setChatRoom(null)
   }
 
+  // 🌟 실시간 알림 수신 시 동작 (자동 팝업 및 목록 갱신)
+  const handleIncomingNotification = (notif) => {
+    // 1. 목록 즉시 갱신
+    setRoomRefreshToggle(prev => prev + 1);
+
+    // 2. 자동 팝업 (이미 그 방을 보고 있지 않을 때만)
+    if (chatRoom?.id !== notif.roomId) {
+      handleOpenChat({
+        id: notif.roomId,
+        title: notif.title || notif.senderNickname || "새 메시지",
+        roomType: notif.roomType || "ONE_ON_ONE",
+        dmTargetNickname: notif.senderNickname,
+      });
+    }
+  };
+
   const renderPage = () => {
     // 🌟 3. 보안 게이트키퍼: 로그아웃 상태에서 뒤로가기로 접근하는 것 차단
     const PROTECTED_TABS = ['my', 'meetup-create'];
@@ -99,7 +117,7 @@ export default function App() {
     switch (tab) {
       case 'home':
         return selectedPostId
-          ? <MeetupDetailPage postId={selectedPostId} onBack={() => navigateTo('home')} />
+          ? <MeetupDetailPage postId={selectedPostId} onBack={() => navigateTo('home')} onOpenChat={handleOpenChat} />
           : <HomePage onNavigate={(t) => handleTabChange(t)} onSelectPost={(id) => navigateTo('home', id)} />;
 
       case 'schedule':
@@ -107,14 +125,14 @@ export default function App() {
 
       case 'meetup':
         return selectedPostId
-          ? <MeetupDetailPage postId={selectedPostId} onBack={() => navigateTo('meetup')} />
+          ? <MeetupDetailPage postId={selectedPostId} onBack={() => navigateTo('meetup')} onOpenChat={handleOpenChat} />
           : <MeetupPage key="meetup" onSelectPost={(id) => navigateTo('meetup', id)} />;
 
       case 'meetup-create':
         return <MeetupPage key="meetup-create" initialOpen={true} onSelectPost={(id) => navigateTo('meetup-create', id)} />;
 
       case 'crew':
-        return <CrewPage currentUser={user} />;
+        return <CrewPage currentUser={user} onOpenChat={handleOpenChat} />;
 
       case 'ticket':
       case 'ticket-transfer':
@@ -167,20 +185,29 @@ export default function App() {
       </main>
 
       {user && (
-        <ChatFab
-          currentUser={user}
-          onOpenChat={handleOpenChat}
-        />
+        <>
+          <GlobalChatListener 
+            user={user} 
+            onNotification={handleIncomingNotification} 
+          />
+          <ChatFab
+            currentUser={user}
+            onOpenChat={handleOpenChat}
+            refreshToggle={roomRefreshToggle}
+          />
+        </>
       )}
 
       {chatRoom && (
         <ChatPage
           crew={{ title: chatRoom.title, team: chatRoom.crewTeam }}
+          crewId={chatRoom.crewId}
+          postId={chatRoom.postId}
           roomType={chatRoom.roomType}
           roomId={chatRoom.id}
           currentUser={user}
           isDm={chatRoom.roomType === 'ONE_ON_ONE'}
-          dmTargetNickname={chatRoom.roomType === 'ONE_ON_ONE' ? chatRoom.title : undefined}
+          dmTargetNickname={chatRoom.roomType === 'ONE_ON_ONE' ? chatRoom.dmTargetNickname || chatRoom.title : undefined}
           onBack={handleCloseChat}
         />
       )}

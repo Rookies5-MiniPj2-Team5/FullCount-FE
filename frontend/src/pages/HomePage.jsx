@@ -45,9 +45,9 @@ function StatusBadge({ status, dDay }) {
 }
 
 export default function HomePage({ onNavigate }) {
-  // ── My Team 상태 (localStorage 영속) ──
+  // ── My Team 상태 (sessionStorage 영속) ──
   const [myTeam, setMyTeam] = useState(() => {
-    try { return localStorage.getItem('myTeam') || null } catch { return null }
+    try { return sessionStorage.getItem('myTeam') || null } catch { return null }
   })
 
   // ── 실시간 응원 채팅 상태 ──
@@ -56,8 +56,8 @@ export default function HomePage({ onNavigate }) {
   function handleMyTeamChange(teamId) {
     setMyTeam(teamId)
     try {
-      if (teamId) localStorage.setItem('myTeam', teamId)
-      else localStorage.removeItem('myTeam')
+      if (teamId) sessionStorage.setItem('myTeam', teamId)
+      else sessionStorage.removeItem('myTeam')
     } catch { /* ignore */ }
   }
 

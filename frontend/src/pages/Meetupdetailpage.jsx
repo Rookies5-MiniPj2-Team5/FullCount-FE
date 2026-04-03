@@ -17,7 +17,7 @@ import {
     rejectApplication,
 } from '../api/meetup'
 
-export default function MeetupDetailPage({ postId, onBack }) {
+export default function MeetupDetailPage({ postId, onBack, onOpenChat }) {
     const id = postId
     const { user } = useAuth()
 
@@ -29,6 +29,25 @@ export default function MeetupDetailPage({ postId, onBack }) {
     const [tab, setTab] = useState('info') // 'info' | 'apply'
 
     const isAuthor = user?.nickname === post?.authorNickname
+
+    const handleOpenDm = () => {
+        if (!user) {
+            alert('로그인이 필요합니다.');
+            return;
+        }
+        if (onOpenChat && post?.authorNickname) {
+            onOpenChat({
+                id: `dm-${[user.nickname, post.authorNickname].sort().join('-')}`,
+                postId: post.id, // ID 해결을 위해 추가
+                roomType: 'ONE_ON_ONE',
+                title: post.authorNickname,
+                dmTargetNickname: post.authorNickname,
+                lastMessage: '',
+                lastMessageAt: new Date().toISOString(),
+                unreadCount: 0,
+            });
+        }
+    };
 
     // ── 데이터 조회 ───────────────────────────────────
     const fetchPost = async () => {
@@ -322,16 +341,22 @@ export default function MeetupDetailPage({ postId, onBack }) {
                                 ✍️ 작성자
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                <div style={{
-                                    width: 44, height: 44, borderRadius: '50%',
-                                    background: 'linear-gradient(135deg, #1a2a4a, #e94560)',
-                                    color: '#fff', display: 'flex', alignItems: 'center',
-                                    justifyContent: 'center', fontWeight: 700, fontSize: 18,
-                                    flexShrink: 0, boxShadow: '0 0 0 3px #e9456040',
-                                }}>
+                                <div 
+                                    onClick={handleOpenDm}
+                                    style={{
+                                        width: 44, height: 44, borderRadius: '50%',
+                                        background: 'linear-gradient(135deg, #1a2a4a, #e94560)',
+                                        color: '#fff', display: 'flex', alignItems: 'center',
+                                        justifyContent: 'center', fontWeight: 700, fontSize: 18,
+                                        flexShrink: 0, boxShadow: '0 0 0 3px #e9456040',
+                                        cursor: 'pointer'
+                                    }}>
                                     {post.authorNickname?.substring(0, 1)}
                                 </div>
-                                <div style={{ flex: 1 }}>
+                                <div 
+                                    style={{ flex: 1, cursor: 'pointer' }}
+                                    onClick={handleOpenDm}
+                                >
                                     <div style={{ fontSize: 15, fontWeight: 700, color: '#1a2a4a', marginBottom: 4 }}>
                                         {post.authorNickname}
                                     </div>
@@ -342,6 +367,17 @@ export default function MeetupDetailPage({ postId, onBack }) {
                                         </span>
                                     </div>
                                 </div>
+                                {!isAuthor && (
+                                    <button 
+                                        onClick={handleOpenDm}
+                                        style={{ 
+                                            padding: "8px 14px", borderRadius: 10, background: "#f5f5f5", 
+                                            border: "1px solid #eee", fontSize: 13, fontWeight: 700, cursor: "pointer" 
+                                        }}
+                                    >
+                                        💬 1:1 문의
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </>
