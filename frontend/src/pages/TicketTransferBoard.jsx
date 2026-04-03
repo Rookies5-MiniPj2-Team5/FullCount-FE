@@ -4,15 +4,15 @@ import api from '../api/api';
 
 // ─── KBO 팀 컬러 ───────────────────────────────────────────────────
 const TEAM_COLORS = {
-  "LG":   "#C8102E",
+  "LG": "#C8102E",
   "두산": "#1a1748",
-  "SSG":  "#CE0E2D",
-  "KIA":  "#EA0029",
+  "SSG": "#CE0E2D",
+  "KIA": "#EA0029",
   "삼성": "#074CA1",
   "롯데": "#002561",
   "한화": "#F37321",
-  "KT":   "#1b1a1a",
-  "NC":   "#1D467A",
+  "KT": "#1b1a1a",
+  "NC": "#1D467A",
   "키움": "#820024",
 };
 
@@ -55,9 +55,9 @@ const STADIUMS = [
 const KBO_TEAMS = ['전체', 'LG', '두산', 'SSG', 'KIA', '삼성', '롯데', '한화', 'KT', 'NC', '키움'];
 
 const STATUS_CONFIG = {
-  selling:  { label: '판매중', bg: '#e6f9f0', color: '#14a85b', border: '#a8e6c7' },
+  selling: { label: '판매중', bg: '#e6f9f0', color: '#14a85b', border: '#a8e6c7' },
   reserved: { label: '예약중', bg: '#fff8e1', color: '#e6a817', border: '#ffe082' },
-  sold:     { label: '판매완료', bg: '#f0f0f0', color: '#999', border: '#ddd' },
+  sold: { label: '판매완료', bg: '#f0f0f0', color: '#999', border: '#ddd' },
 };
 
 // ─── 상태 뱃지 ─────────────────────────────────────────────────────
@@ -306,7 +306,7 @@ function TicketWriteModal({ onClose, onSubmit }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.matchDate) { alert('경기 날짜를 선택해주세요.'); return; }
-    if (!form.seatArea)  { alert('좌석 구역을 입력해주세요.'); return; }
+    if (!form.seatArea) { alert('좌석 구역을 입력해주세요.'); return; }
     if (!form.price || isNaN(Number(form.price))) { alert('양도 가격을 숫자로 입력해주세요.'); return; }
     setSubmitting(true);
     try {
@@ -472,8 +472,7 @@ export default function TicketTransferBoard({ onOpenChat }) {
     try {
       setLoading(true);
       setError(null);
-      // 올바른 엔드포인트: /posts?boardType=TRANSFER
-      const response = await api.get('/posts?boardType=TRANSFER');
+      const response = await api.get('/ticket-transfers'); // BE에서 /tickets-transfer로 변경했으므로 맞춰서 호출
       const data = response.data;
       let items = [];
       if (data && data.data) {
@@ -481,14 +480,15 @@ export default function TicketTransferBoard({ onOpenChat }) {
       } else if (data) {
         items = Array.isArray(data) ? data : (data.content || []);
       }
-      
+
       // ✅ 데이터 정규화: 백엔드 필드명(TransferResponse)을 프론트 규격에 매핑
       const normalized = items.map(t => {
         const homeShort = getShortName(t.homeTeamName || t.homeTeam);
         const awayShort = getShortName(t.awayTeamName || t.awayTeam);
-        
+
         return {
           ...t,
+          authorID: t.authorId,
           author: t.authorNickname || t.author || t.nickname || t.userNickname || '익명',
           homeTeam: homeShort,
           awayTeam: awayShort,
@@ -505,7 +505,7 @@ export default function TicketTransferBoard({ onOpenChat }) {
           status: t.status === 'CLOSED' ? 'sold' : (t.status === 'RESERVED' ? 'reserved' : 'selling'),
         };
       });
-      
+
       setTickets(normalized);
     } catch (err) {
       console.error('Failed to fetch tickets:', err);
@@ -516,22 +516,33 @@ export default function TicketTransferBoard({ onOpenChat }) {
   };
 
   // 연락하기 → 1:1 DM 열기
-  const handleContact = (ticket) => {
+  const handleContact = async (ticket) => {
     if (!user) {
       alert('로그인이 필요합니다.');
       return;
     }
-    if (onOpenChat) {
-      onOpenChat({
-        id: `ticket-dm-${ticket.id}-${ticket.author}`,
-        roomType: 'ONE_ON_ONE',
-        title: ticket.author,
-        lastMessage: '',
-        lastMessageAt: new Date().toISOString(),
-        unreadCount: 0,
-        crewTeam: '',
-        dmTargetNickname: ticket.author,
-      });
+
+    if (!ticket.authorId) {
+      alert('상대방 정보를 찾을 수 없습니다.');
+      return;
+    }
+
+    try {
+      const res = await api.post(`/chat/rooms/dm/user/${ticket.authorId}`);
+      const roomId = res.data.data?.chatRoomId;
+
+      if (onOpenChat) {
+        onOpenChat({
+          id: roomId,
+          roomType: 'ONE_ON_ONE_DIRECT',
+          title: ticket.author,
+          isDm: true,
+          dmTargetNickname: ticket.author,
+        });
+      }
+    } catch (err) {
+      console.error('DM 채팅방 생성 실패:', err);
+      alert('채팅방 생성에 실패했습니다.');
     }
   };
 
@@ -560,7 +571,7 @@ export default function TicketTransferBoard({ onOpenChat }) {
     };
 
     await api.post('/posts', payload);
-    
+
     // 등록 성공 시 목록 갱신
     await fetchTickets();
   };

@@ -78,8 +78,9 @@ export default function ChatPage({
       client.debug = null;
       clientRef.current = client;
 
+      const token = localStorage.getItem("accessToken");
       client.connect(
-        {},
+        { Authorization: `Bearer ${token}` },
         () => {
           console.log(`[Chat] 연결 성공 - roomId: ${currentRid}`);
           setConnected(true);
