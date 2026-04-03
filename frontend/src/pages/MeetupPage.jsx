@@ -17,25 +17,41 @@ const TEAM_CODE_MAP = {
   LO: 6, HH: 7, KT: 8, NC: 9, WO: 10,
 };
 
-// === DEBUG: 더미 데이터 (API 연동 전 확인용) ===
-const MEETUP_DUMMY = [
-  { id: 1, authorNickname: "야구팬1", title: "잠실 LG vs 두산 같이 보실 분!", content: "응원해요!", status: "OPEN", supportTeamName: "LG 트윈스", homeTeamName: "LG", awayTeamName: "DU", maxParticipants: 4, currentParticipants: 2, stadium: "잠실야구장", matchDate: "2026-04-05" },
-  { id: 2, authorNickname: "트윈스킹", title: "LG 홈경기 직관 (마감)", content: "마감!", status: "OPEN", supportTeamName: "LG 트윈스", homeTeamName: "LG", awayTeamName: "KT", maxParticipants: 2, currentParticipants: 2, stadium: "잠실야구장", matchDate: "2026-04-07" },
-  { id: 3, authorNickname: "곰팬이에요", title: "두산 개막전 직관!", content: "곰팬 모여라", status: "OPEN", supportTeamName: "두산 베어스", homeTeamName: "DU", awayTeamName: "SSG", maxParticipants: 5, currentParticipants: 1, stadium: "잠실야구장", matchDate: "2026-04-05" },
-];
+const ID_TO_TEAM_NAME = {
+  1: "LG", 2: "두산", 3: "SSG", 4: "KIA", 5: "삼성",
+  6: "롯데", 7: "한화", 8: "KT", 9: "NC", 10: "키움"
+};
+
+// 🚨 구단별 홈 구장 매핑 데이터 (숫자 ID와 영어 ID 모두 지원)
+const STADIUMS = {
+  1: '잠실야구장', 2: '잠실야구장', 3: '인천 SSG 랜더스필드', 4: '광주-기아 챔피언스 필드',
+  5: '대구 삼성 라이온즈 파크', 6: '사직야구장', 7: '한화생명 이글스 파크', 8: '수원 KT 위즈 파크',
+  9: '창원 NC 파크', 10: '고척 스카이돔',
+  LG: '잠실야구장', DU: '잠실야구장', SSG: '인천 SSG 랜더스필드', KIA: '광주-기아 챔피언스 필드',
+  SA: '대구 삼성 라이온즈 파크', LO: '사직야구장', HH: '한화생명 이글스 파크', KT: '수원 KT 위즈 파크',
+  NC: '창원 NC 파크', WO: '고척 스카이돔'
+};
+
+const getNormalizedTeamName = (id, name) => {
+    if (id && ID_TO_TEAM_NAME[id]) return ID_TO_TEAM_NAME[id];
+    if (typeof name === 'string') {
+        if (name.includes('LG')) return 'LG';
+        if (name.includes('두산') || name === 'DU') return '두산';
+        if (name.includes('SSG')) return 'SSG';
+        if (name.includes('KIA') || name.includes('기아')) return 'KIA';
+        if (name.includes('삼성') || name === 'SA') return '삼성';
+        if (name.includes('롯데') || name === 'LO') return '롯데';
+        if (name.includes('한화') || name === 'HH') return '한화';
+        if (name.includes('KT')) return 'KT';
+        if (name.includes('NC')) return 'NC';
+        if (name.includes('키움') || name === 'WO') return '키움';
+    }
+    return "미정";
+};
 
 function MeetupCard({ post, user, onClick, onDelete }) {
-  // 팀 코드나 이름을 한글 이름으로 변환하는 보조 함수 (컬러 매핑용)
-  const getTeamDisplayName = (team) => {
-    const nameMap = {
-      'DU': '두산', 'WO': '키움', 'SA': '삼성', 'LO': '롯데', 'HH': '한화', 
-      'KIA': 'KIA', 'KT': 'KT', 'LG': 'LG', 'NC': 'NC', 'SSG': 'SSG'
-    };
-    return nameMap[team] || team;
-  };
-
-  const homeTeam = getTeamDisplayName(post.homeTeamName || "홈");
-  const awayTeam = getTeamDisplayName(post.awayTeamName || "어웨이");
+  const homeTeam = getNormalizedTeamName(post.homeTeamId, post.homeTeamName);
+  const awayTeam = getNormalizedTeamName(post.awayTeamId, post.awayTeamName);
   
   const homeColor = TEAM_COLORS[homeTeam] || "#ef4b5f";
   const awayColor = TEAM_COLORS[awayTeam] || "#666";
@@ -68,7 +84,7 @@ function MeetupCard({ post, user, onClick, onDelete }) {
           <div style={{ flex: 1, height: 4, background: "#f5f5f5", borderRadius: 999, overflow: "hidden" }}>
             <div style={{ height: "100%", width: `${ratio * 100}%`, background: isFull ? "#ccc" : homeColor, borderRadius: 999, transition: "width 0.3s ease" }} />
           </div>
-          <span style={{ fontSize: 12, color: "#666", fontWeight: 700 }}>👤 {post.currentParticipants}/{post.maxParticipants}명</span>
+          <span style={{ fontSize: 12, color: "#666", fontWeight: 700 }}>👤 {post.currentParticipants || 0}/{post.maxParticipants || 1}명</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -101,36 +117,23 @@ export default function MeetupPage({ onSelectPost, initialOpen }) {
       const selectedTeamId = filterTeam === 'ALL' ? null : TEAM_CODE_MAP[filterTeam];
       const status = filterStatus === 'OPEN' ? 'OPEN' : null;
 
-      // API 파라미터에 teamId 외에 homeTeamId, awayTeamId를 고려할 수 있도록 구성 (백엔드 사양에 맞춤)
       const response = await api.get('/posts', {
         params: { 
-          boardType: 'MATE', 
-          teamId: selectedTeamId, // 전체 팀 필터링용
-          homeTeamId: selectedTeamId, // 홈 팀 필터링용
-          awayTeamId: selectedTeamId, // 어웨이 팀 필터링용
-          status, 
-          page: 0, 
-          size: 9 
+          boardType: 'MATE', teamId: selectedTeamId, homeTeamId: selectedTeamId, awayTeamId: selectedTeamId, status, page: 0, size: 9 
         }
       });
 
       const responseData = response.data;
       let postsArray = [];
 
-      if (responseData?.success && responseData?.data?.content) {
-          postsArray = responseData.data.content;
-      } else if (responseData?.data?.content) {
-          postsArray = responseData.data.content;
-      } else if (responseData?.content) {
-          postsArray = responseData.content;
-      } else if (Array.isArray(responseData?.data)) {
-          postsArray = responseData.data;
-      }
+      if (responseData?.success && responseData?.data?.content) postsArray = responseData.data.content;
+      else if (responseData?.data?.content) postsArray = responseData.data.content;
+      else if (responseData?.content) postsArray = responseData.content;
+      else if (Array.isArray(responseData?.data)) postsArray = responseData.data;
 
       setPosts(postsArray);
     } catch (err) {
-      console.error("데이터 로드 실패:", err);
-      setPosts(MEETUP_DUMMY);
+      setPosts([]);
     } finally {
       setLoading(false);
     }
@@ -140,21 +143,12 @@ export default function MeetupPage({ onSelectPost, initialOpen }) {
     fetchMates();
   }, [filterTeam, filterStatus]);
 
-  // 클라이언트 보조 필터: DB의 homeTeamId, awayTeamId를 직접 비교
   const filteredPosts = posts.filter(post => {
     if (filterTeam !== 'ALL') {
       const targetId = TEAM_CODE_MAP[filterTeam];
-      
-      // 1. ID 기반 매칭 (DB 컬럼: home_team_id, away_team_id)
       const isIdMatch = post.homeTeamId === targetId || post.awayTeamId === targetId;
-      
-      // 2. 이름 기반 매칭 (하위 호환성 및 표시용 필드 대응)
       const filterName = TEAMS.find(t => t.id === filterTeam)?.name || '';
-      const isNameMatch = 
-        (post.homeTeamName || '').includes(filterName) || 
-        (post.awayTeamName || '').includes(filterName) ||
-        (post.supportTeamName || '').includes(filterName);
-
+      const isNameMatch = (post.homeTeamName || '').includes(filterName) || (post.awayTeamName || '').includes(filterName) || (post.supportTeamName || '').includes(filterName);
       if (!isIdMatch && !isNameMatch) return false;
     }
     if (filterStatus === 'FULL') {
@@ -163,6 +157,46 @@ export default function MeetupPage({ onSelectPost, initialOpen }) {
     return true;
   });
 
+  // 🚨 동일 팀 선택 방지 로직
+  const handleTeamChange = (type, value) => {
+      if (type === 'home' && value === formData.awayTeamId && value !== '') {
+          alert('홈 팀과 어웨이 팀은 같을 수 없습니다.');
+          return;
+      }
+      if (type === 'away' && value === formData.homeTeamId && value !== '') {
+          alert('홈 팀과 어웨이 팀은 같을 수 없습니다.');
+          return;
+      }
+      setFormData({ ...formData, [type === 'home' ? 'homeTeamId' : 'awayTeamId']: value });
+  };
+
+  const handleCreate = async (e) => {
+    e.preventDefault();
+    if (formData.homeTeamId && formData.homeTeamId === formData.awayTeamId) {
+      alert('홈 팀과 어웨이 팀은 같을 수 없습니다!');
+      return;
+    }
+    try {
+      // 🚨 홈 경기장 자동 설정
+      const autoStadium = STADIUMS[formData.homeTeamId] || "경기장 미정";
+      const payload = {
+        boardType: 'MATE',
+        ...formData,
+        stadium: autoStadium, 
+        homeTeamId: TEAM_CODE_MAP[formData.homeTeamId] || formData.homeTeamId,
+        awayTeamId: TEAM_CODE_MAP[formData.awayTeamId] || formData.awayTeamId,
+      };
+
+      await api.post('/posts', payload);
+      setIsModalOpen(false);
+      setFormData({ title: '', content: '', matchDate: '', homeTeamId: '', awayTeamId: '', maxParticipants: 2 });
+      fetchMates();
+      alert('모집글이 성공적으로 등록되었습니다!');
+    } catch (err) {
+      alert('등록 실패');
+    }
+  };
+
   const handleDelete = async (postId) => {
     if (!window.confirm('정말 삭제하시겠습니까?')) return;
     try {
@@ -170,28 +204,6 @@ export default function MeetupPage({ onSelectPost, initialOpen }) {
       fetchMates();
     } catch (err) {
       alert("삭제 실패");
-    }
-  };
-
-  const handleCreate = async (e) => {
-    e.preventDefault();
-    try {
-      // 백엔드에서 기대하는 숫자형 ID로 변환하여 전송
-      const payload = {
-        boardType: 'MATE',
-        ...formData,
-        homeTeamId: TEAM_CODE_MAP[formData.homeTeamId] || formData.homeTeamId,
-        awayTeamId: TEAM_CODE_MAP[formData.awayTeamId] || formData.awayTeamId,
-      };
-
-      await api.post('/posts', payload);
-      setIsModalOpen(false);
-      setFormData({ title: '', content: '', matchDate: '', homeTeamId: '', awayTeamId: '', maxParticipants: 2 }); // 폼 초기화
-      fetchMates();
-      alert('모집글이 등록되었습니다!');
-    } catch (err) {
-      console.error("등록 실패:", err);
-      alert('등록 실패');
     }
   };
 
@@ -218,16 +230,12 @@ export default function MeetupPage({ onSelectPost, initialOpen }) {
           <div style={{ textAlign: 'center', padding: '40px' }}>로딩 중...</div>
         ) : (
           <div className="card-grid">
-            <div
-              onClick={() => {
-                if (!user) {
-                  alert('로그인 후 이용 가능합니다.');
-                  return;
-                }
+            <div onClick={() => {
+                if (!user) { alert('로그인 후 이용 가능합니다.'); return; }
                 setIsModalOpen(true);
-              }}
-              style={{ cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "220px", borderRadius: '16px', border: '2px dashed #ddd', backgroundColor: '#f9f9f9', transition: 'all 0.2s ease' }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#ef4b5f'; e.currentTarget.style.backgroundColor = '#fff5f6'; }}
+              }} 
+              style={{ cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "220px", borderRadius: '16px', border: '2px dashed #ddd', backgroundColor: '#f9f9f9', transition: 'all 0.2s ease' }} 
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#ef4b5f'; e.currentTarget.style.backgroundColor = '#fff5f6'; }} 
               onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#ddd'; e.currentTarget.style.backgroundColor = '#f9f9f9'; }}
             >
               <div style={{ fontSize: '40px', color: '#ef4b5f', marginBottom: '8px' }}>+</div>
@@ -248,16 +256,26 @@ export default function MeetupPage({ onSelectPost, initialOpen }) {
             <form onSubmit={handleCreate}>
               <input placeholder="제목" style={{ width: '100%', marginBottom: 12, borderRadius: 10, padding: 10, border: '1px solid #ddd', boxSizing: 'border-box' }} value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} required />
               <textarea placeholder="내용" style={{ width: '100%', height: 100, marginBottom: 12, borderRadius: 10, padding: 10, border: '1px solid #ddd', boxSizing: 'border-box', resize: 'none' }} value={formData.content} onChange={e => setFormData({ ...formData, content: e.target.value })} required />
+              
               <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-                <select style={{ flex: 1, padding: 8, borderRadius: 10, border: '1px solid #ddd' }} value={formData.homeTeamId} onChange={e => setFormData({ ...formData, homeTeamId: e.target.value })} required>
+                {/* 🚨 동일 팀 선택 방지 로직(handleTeamChange) 연결 */}
+                <select style={{ flex: 1, padding: 8, borderRadius: 10, border: '1px solid #ddd' }} value={formData.homeTeamId} onChange={e => handleTeamChange('home', e.target.value)} required>
                   <option value="">홈 팀</option>
                   {TEAMS.filter(t => t.id !== 'ALL').map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
-                <select style={{ flex: 1, padding: 8, borderRadius: 10, border: '1px solid #ddd' }} value={formData.awayTeamId} onChange={e => setFormData({ ...formData, awayTeamId: e.target.value })} required>
-                  <option value="">어웨이</option>
+                <select style={{ flex: 1, padding: 8, borderRadius: 10, border: '1px solid #ddd' }} value={formData.awayTeamId} onChange={e => handleTeamChange('away', e.target.value)} required>
+                  <option value="">어웨이 팀</option>
                   {TEAMS.filter(t => t.id !== 'ALL').map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
               </div>
+
+              {/* 🚨 홈팀 선택 시 예상 경기장 UI 표시 */}
+              {formData.homeTeamId && (
+                  <div style={{ marginBottom: 12, padding: '10px', background: '#f5f5f5', borderRadius: 10, fontSize: 13, color: '#555', textAlign: 'center', border: '1px solid #eee' }}>
+                      📍 예상 경기장: <b>{STADIUMS[formData.homeTeamId] || '미정'}</b>
+                  </div>
+              )}
+
               <input type="date" style={{ width: '100%', marginBottom: 20, padding: 8, borderRadius: 10, border: '1px solid #ddd', boxSizing: 'border-box' }} value={formData.matchDate} onChange={e => setFormData({ ...formData, matchDate: e.target.value })} required />
               <div style={{ display: 'flex', gap: 10 }}>
                 <button type="submit" style={{ flex: 1, padding: 12, background: '#ef4b5f', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, cursor: 'pointer' }}>등록</button>
