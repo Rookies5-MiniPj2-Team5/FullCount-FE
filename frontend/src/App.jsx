@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from './context/AuthContext'
 import MeetupPage from './pages/MeetupPage'
+import MeetupDetailPage from './pages/MeetupDetailPage'
 import CrewPage from './pages/CrewPage'
 import MyPage from './pages/MyPage'
 import SchedulePage from './pages/SchedulePage'
@@ -26,9 +27,9 @@ export default function App() {
   const [tab, setTab] = useState('home')
   const [selectedPostId, setSelectedPostId] = useState(null)
   const [chatRoom, setChatRoom] = useState(null)
-  const [roomRefreshToggle, setRoomRefreshToggle] = useState(0) 
+  const [roomRefreshToggle, setRoomRefreshToggle] = useState(0) // ChatFab 리스트 갱신용
 
-  // 🌟 1. 브라우저 주소창과 React 상태(State) 동기화
+  // 🌟 1. 브라우저 주소창과 React 상태(State) 동기화 (뒤로가기 해결)
   useEffect(() => {
     const handlePopState = () => {
       const searchParams = new URLSearchParams(window.location.search);
@@ -90,10 +91,12 @@ export default function App() {
     setChatRoom(null)
   }
 
-  // 🌟 실시간 알림 수신 시 동작
+  // 🌟 실시간 알림 수신 시 동작 (자동 팝업 및 목록 갱신)
   const handleIncomingNotification = (notif) => {
+    // 1. 목록 즉시 갱신
     setRoomRefreshToggle(prev => prev + 1);
 
+    // 2. 자동 팝업 (이미 그 방을 보고 있지 않을 때만)
     if (chatRoom?.id !== notif.roomId) {
       handleOpenChat({
         id: notif.roomId,
@@ -105,6 +108,7 @@ export default function App() {
   };
 
   const renderPage = () => {
+    // 🌟 3. 보안 게이트키퍼: 로그아웃 상태에서 뒤로가기로 접근하는 것 차단
     const PROTECTED_TABS = ['my', 'meetup-create'];
     if (PROTECTED_TABS.includes(tab) && !user) {
       return <HomePage onNavigate={(t) => handleTabChange(t)} onSelectPost={(id) => navigateTo('home', id)} />;
@@ -135,7 +139,7 @@ export default function App() {
         return <TicketTransferBoard onOpenChat={handleOpenChat} />;
 
       case 'my':
-        return <MyPage onSelectPost={(id) => navigateTo('meetup', id)} />;
+        return <MyPage />;
 
       case 'signup':
         return <SignupPage onSwitchToLogin={() => navigateTo('home')} />;
