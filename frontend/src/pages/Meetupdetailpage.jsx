@@ -16,6 +16,7 @@ import {
     acceptApplication,
     rejectApplication,
 } from '../api/meetup'
+import { createOrGetMeetupDmRoom, createOrGetDmByNickname } from '../api/chat'
 
 export default function MeetupDetailPage({ postId, onBack, onOpenChat }) {
     const id = postId
@@ -30,43 +31,66 @@ export default function MeetupDetailPage({ postId, onBack, onOpenChat }) {
 
     const isAuthor = !!user && !!post && user.nickname === post.authorNickname
 
-    const handleOpenDm = () => {
+    const handleOpenDm = async () => {
         if (!user) {
-            alert('로그인이 필요합니다.');
-            return;
+            alert('로그인이 필요합니다.')
+            return
         }
-        if (onOpenChat && post?.authorNickname) {
-            onOpenChat({
-                id: `dm-${[user.nickname, post.authorNickname].sort().join('-')}`,
-                postId: post?.id, // ID 해결을 위해 추가
-                roomType: 'ONE_ON_ONE',
+
+        console.log('Initiating DM with Post:', {
+            postId: post?.id,
+            authorId: post?.authorId,
+            authorNickname: post?.authorNickname,
+        })
+
+        if (!post?.id) {
+            alert('게시글 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.')
+            return
+        }
+
+        try {
+            let room;
+
+            if (post?.authorId) {
+                // authorId가 있으면 meetup 전용 엔드포인트 사용
+                room = await createOrGetMeetupDmRoom(post.id, post.authorId);
+            } else if (post?.authorNickname) {
+                // authorId 없으면 닉네임으로 조회 (공통 유틸)
+                console.warn('authorId 없음 - 닉네임으로 DM 생성 시도:', post.authorNickname)
+                room = await createOrGetDmByNickname(post.authorNickname)
+            } else {
+                alert('작성자 정보를 찾을 수 없습니다.')
+                return
+            }
+
+            const roomId = room?.chatRoomId || room?.id;
+            if (!roomId) throw new Error('채팅방 ID가 응답에 없습니다. 응답: ' + JSON.stringify(room))
+
+            onOpenChat?.({
+                id: roomId,
+                roomType: 'ONE_ON_ONE_DIRECT',
                 title: post.authorNickname,
+                isDm: true,
                 dmTargetNickname: post.authorNickname,
-                lastMessage: '',
-                lastMessageAt: new Date().toISOString(),
-                unreadCount: 0,
-            });
+            })
+        } catch (err) {
+            console.error('채팅방 생성 실패:', err)
+            alert('채팅방을 열 수 없습니다.')
         }
-    };
+    }
 
     // ── 데이터 조회 ───────────────────────────────────
     const fetchPost = async () => {
         try {
             setLoading(true)
-            // TODO: BE 연동 시 아래 코드로 교체
-            // const res = await getMeetupPost(id)
-            // setPost(res.data)
-
-            // 임시 더미 데이터
-            setPost({
-                id: 1, title: '잠실 LG vs 두산 같이 보실분!',
-                content: '같이 응원해요! 잠실 3루 응원석 자리 있어요. 처음 직관 오시는 분도 환영합니다. 치킨이랑 맥주 같이 먹어요 🍺⚾',
-                matchDate: '2026-04-05', homeTeamName: 'LG', awayTeamName: '두산',
-                stadium: '잠실야구장',
-                authorNickname: '테스트유저', teamName: 'LG', maxParticipants: 4,
-                currentCount: 1, status: 'OPEN', createdAt: '2026-04-01'
-            })
-        } catch {
+            const res = await getMeetupPost(id)
+            // BE: { success: true, data: { ... } } or { ... }
+            const postData = res.data?.data || res.data;
+            // ✅ 전체 응답 로깅 - 실제 필드명 확인용
+            console.log('[MeetupDetail] 게시글 전체 데이터:', postData);
+            setPost(postData)
+        } catch (err) {
+            console.error('게시글 로딩 실패:', err)
             alert('게시글을 불러오지 못했습니다.')
             onBack()
         } finally {
@@ -77,16 +101,16 @@ export default function MeetupDetailPage({ postId, onBack, onOpenChat }) {
     const fetchApplications = async () => {
         try {
             const res = await getApplications(id)
-            setApplications(res.data)
-        } catch {
-            console.error('신청자 목록 로딩 실패')
+            setApplications(res.data?.data || res.data || [])
+        } catch (err) {
+            console.error('신청자 목록 로딩 실패:', err)
         }
     }
 
     const fetchMyApplication = async () => {
         try {
             const res = await getMyApplication(id)
-            setMyApplication(res.data)
+            setMyApplication(res.data?.data || res.data)
         } catch {
             setMyApplication(null)
         }
@@ -94,13 +118,11 @@ export default function MeetupDetailPage({ postId, onBack, onOpenChat }) {
 
     useEffect(() => {
         fetchPost()
-        // TODO: BE 연동 시 주석 해제
-        // if (user) fetchMyApplication()
-    }, [id])
+        if (user) fetchMyApplication()
+    }, [id, user])
 
     useEffect(() => {
-        // TODO: BE 연동 시 주석 해제
-        // if (isAuthor) fetchApplications()
+        if (isAuthor && post?.id) fetchApplications()
     }, [post, isAuthor])
 
     // ── 핸들러 ────────────────────────────────────────
@@ -349,13 +371,11 @@ export default function MeetupDetailPage({ postId, onBack, onOpenChat }) {
                                         color: '#fff', display: 'flex', alignItems: 'center',
                                         justifyContent: 'center', fontWeight: 700, fontSize: 18,
                                         flexShrink: 0, boxShadow: '0 0 0 3px #e9456040',
-                                        cursor: 'pointer'
                                     }}>
                                     {post.authorNickname?.substring(0, 1)}
                                 </div>
                                 <div 
-                                    style={{ flex: 1, cursor: 'pointer' }}
-                                    onClick={handleOpenDm}
+                                    style={{ flex: 1 }}
                                 >
                                     <div style={{ fontSize: 15, fontWeight: 700, color: '#1a2a4a', marginBottom: 4 }}>
                                         {post.authorNickname}
@@ -375,7 +395,7 @@ export default function MeetupDetailPage({ postId, onBack, onOpenChat }) {
                                             border: "1px solid #eee", fontSize: 13, fontWeight: 700, cursor: "pointer" 
                                         }}
                                     >
-                                        💬 1:1 문의
+                                        💬 1:1 채팅으로 문의하기
                                     </button>
                                 )}
                             </div>

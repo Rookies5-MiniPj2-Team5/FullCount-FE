@@ -184,11 +184,23 @@ export default function MeetupPage({ onSelectPost, initialOpen }) {
         awayTeamId: TEAM_CODE_MAP[formData.awayTeamId] || formData.awayTeamId,
       };
 
-      await api.post('/posts', payload);
+      const response = await api.post('/posts', payload);
+      
+      // ✅ 생성된 글의 ID 추출 (BE 데이터 구조에 따라 확인)
+      const newPostId = response.data?.data?.id || response.data?.id;
+
       setIsModalOpen(false);
       setFormData({ title: '', content: '', matchDate: '', homeTeamId: '', awayTeamId: '', maxParticipants: 2 }); // 폼 초기화
+      
+      // 목록 데이터 비동기 갱신 (나중에 돌아왔을 때 보임)
       fetchMates();
-      alert('모집글이 등록되었습니다!');
+
+      if (newPostId) {
+        alert('모집글이 등록되었습니다!');
+        onSelectPost?.(newPostId); // 상세 페이지로 자동 이동
+      } else {
+        alert('모집글이 등록되었습니다!');
+      }
     } catch (err) {
       console.error("등록 실패:", err);
       alert('등록 실패');

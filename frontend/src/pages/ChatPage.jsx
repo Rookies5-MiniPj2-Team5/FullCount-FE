@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import SockJS from "sockjs-client";
 import Stomp from "stompjs";
 import api from "../api/api";
+import { fetchChatHistory, fetchChatParticipants, markAsRead } from "../api/chat";
 
 const fmtTime = (iso) =>
   new Date(iso).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false });
@@ -22,10 +23,8 @@ const isSameDay = (a, b) =>
 
 export default function ChatPage({
   crew,
-  crewId, // ID 해결용으로 추가
-  postId, // ID 해결용으로 추가 (Meetup/Transfer)
   roomType = "GROUP",
-  roomId: initialRoomId,
+  roomId,
   currentUser,
   isDm = false,
   dmTargetNickname,
@@ -34,7 +33,6 @@ export default function ChatPage({
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState("");
   const [connected, setConnected] = useState(false);
-  const [roomId, setRoomId] = useState(initialRoomId); // 실제 해결된 ID 저장용
   const [isFullSize, setIsFullSize] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
@@ -64,67 +62,39 @@ export default function ChatPage({
   }, []);
 
   useEffect(() => {
-    if (isConnecting.current) return;
+    if (!roomId || isConnecting.current) return;
 
     const initChat = async () => {
       isConnecting.current = true;
-      let currentRid = initialRoomId;
-
-      // 🌟 [ID Resolution] 만약 roomId가 숫자가 아니라면 (dm-A-B 등), 서버에서 실제 ID를 받아옴
-      let isTempId = typeof currentRid === "string" && currentRid.startsWith("dm-");
-
-      if (isDm && (isTempId || !currentRid)) {
-        try {
-          const res = await api.post(`/chat/rooms/dm/crew/${crew.id}`);
-          currentRid = res.data.id;
-          setRoomId(currentRid);
-        } catch (err) {
-          console.error("DM 채팅방 해결 실패:", err);
-          isConnecting.current = false;
-          return;
-        }
-      }
-
-      if (!currentRid || isTempId) {
-        console.warn("[Chat] 유효한 roomId가 없어 연결을 중단합니다.", { currentRid, isTempId });
-        isConnecting.current = false;
-        return;
-      }
 
       const socket = new SockJS("http://localhost:8080/ws");
       const client = Stomp.over(socket);
       client.debug = null;
       clientRef.current = client;
 
-      const token = localStorage.getItem("accessToken");
+      const token = sessionStorage.getItem("accessToken");
       client.connect(
         { Authorization: `Bearer ${token}` },
         () => {
-          console.log(`[Chat] 연결 성공 - roomId: ${currentRid}`);
+          console.log(`[Chat] 연결 성공 - roomId: ${roomId}`);
           setConnected(true);
 
-          client.subscribe(`/topic/chat/${currentRid}`, (frame) => {
+          client.subscribe(`/topic/chat/${roomId}`, (frame) => {
             try {
               const newMessage = JSON.parse(frame.body);
               console.log("[Chat] Received:", newMessage);
-              const normalizedMsg = {
-                ...newMessage,
-                content: newMessage.content || newMessage.message,
-                senderNickname: newMessage.senderNickname || newMessage.sender,
-                timestamp: newMessage.timestamp || new Date().toISOString(),
-              };
-              setMessages((prev) => [...prev, normalizedMsg]);
+              setMessages((prev) => [...prev, normalizeMsg(newMessage)]);
             } catch (e) {
               console.error("[Chat] 메시지 파싱 오류:", e);
             }
           });
 
-          api.get(`/chat/rooms/${currentRid}/messages`)
-            .then(res => {
-              const messages = res.data.data?.content || [];
-              setMessages(messages.reverse());
-              //읽음 처리 추가
-              return api.post(`/chat/rooms/${currentRid}/read`);
+          // 초기 데이터 로드
+          fetchChatHistory(roomId)
+            .then(data => {
+              const msgs = Array.isArray(data) ? data : (data.content || []);
+              setMessages(msgs.reverse().map(normalizeMsg));
+              return markAsRead(roomId);
             })
             .catch(err => console.error("메시지 조회 실패:", err));
         },
@@ -146,7 +116,7 @@ export default function ChatPage({
       isConnecting.current = false;
       setConnected(false);
     };
-  }, [initialRoomId, isDm, crewId, postId, normalizeMsg]);
+  }, [roomId, normalizeMsg]);
 
   useEffect(() => {
     const el = msgListRef.current;
@@ -161,9 +131,8 @@ export default function ChatPage({
 
   useEffect(() => {
     if (!roomId) return;
-    api.get(`/chat/${roomId}`)
-      .then(res => {
-        const data = res.data.data || res.data;
+    fetchChatParticipants(roomId)
+      .then(data => {
         setParticipants(data?.participants || []);
       })
       .catch(err => console.error("참여자 조회 실패:", err));
