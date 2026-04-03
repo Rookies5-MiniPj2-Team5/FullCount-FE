@@ -162,7 +162,11 @@ export default function MeetupDetailPage({ postId, onBack, onOpenChat }) {
       setTab('apply');
     } catch (error) {
       console.error('메이트 신청 실패:', error);
-      alert('신청에 실패했습니다. 이미 신청했거나 모집이 마감되었을 수 있습니다.');
+      const backendMessage =
+        error?.response?.data?.message ||
+        error?.response?.data?.error?.message ||
+        error?.response?.data?.data?.message;
+      alert(backendMessage || '신청에 실패했습니다.');
     }
   };
 
