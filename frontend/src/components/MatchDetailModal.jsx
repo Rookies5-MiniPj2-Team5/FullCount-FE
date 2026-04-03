@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { TEAM_LOGO, TEAM_NAME } from './TeamComponents'
 import WeatherWidget from './WeatherWidget'
 import api from '../api/api'
+import LiveChatPanel from './LiveChatPanel'
 
 // ── 팀 색상 ──────────────────────────────────────────────
 const TEAM_COLORS = {
@@ -72,7 +73,10 @@ function ModalSpinner() {
 }
 
 // ── 메인 모달 컴포넌트 ────────────────────────────────────
-export default function MatchDetailModal({ game, onClose }) {
+// ── 데모 모모드 설정 (발표용: 실시간 경기가 아닐 때도 채팅 버튼 활성화) ──────
+const IS_DEMO_MODE = true;
+
+export default function MatchDetailModal({ game, onClose, onJoinChat }) {
   const [detail, setDetail] = useState(null)   // 라이브 API 결과
   const [fetching, setFetching] = useState(true)
   const overlayRef = useRef(null)
@@ -158,6 +162,7 @@ export default function MatchDetailModal({ game, onClose }) {
   }
 
   return (
+    <>
     <div
       className="match-modal-overlay match-modal-overlay--visible"
       ref={overlayRef}
@@ -294,9 +299,35 @@ export default function MatchDetailModal({ game, onClose }) {
               </div>
             )}
 
+            {/* 하단: LIVE 경기일 때 응원 채팅 참여 버튼 (데모 모드 시 항상 활성화) */}
+            {(status === 'live' || IS_DEMO_MODE) && (
+              <div style={{ padding: '12px 16px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                <button
+                  id="live-chat-join-btn"
+                  onClick={() => {
+                    onJoinChat && onJoinChat(game);
+                    onClose();
+                  }}
+                  style={{
+                    width: '100%', padding: '12px 0',
+                    background: 'linear-gradient(135deg, #e94560, #c30452)',
+                    color: '#fff', border: 'none', borderRadius: 12,
+                    fontSize: 15, fontWeight: 800, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    boxShadow: '0 4px 15px rgba(233,69,96,0.4)',
+                    fontFamily: 'inherit',
+                    animation: 'pulse 1.5s ease-in-out infinite',
+                  }}
+                >
+                  🔴 응원 채팅 참여하기
+                </button>
+              </div>
+            )}
+
           </div>
         )}
       </div>
     </div>
+    </>
   )
 }

@@ -1723,6 +1723,43 @@ body {
   background: rgba(255,255,255,0.06);
 }
 
+/* 실시간 응원 참여 버튼 */
+.tgc-join-btn {
+  width: 100%;
+  margin-top: 14px;
+  padding: 11px 0;
+  background: linear-gradient(135deg, #e94560 0%, #c30452 100%);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 15px rgba(233, 69, 96, 0.35);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: inherit;
+}
+.tgc-join-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(233, 69, 96, 0.5);
+  filter: brightness(1.1);
+}
+.tgc-join-btn:active {
+  transform: translateY(0);
+}
+#live-chat-join-btn {
+  animation: pulse-join 2s infinite;
+}
+@keyframes pulse-join {
+  0% { box-shadow: 0 0 0 0 rgba(233, 69, 96, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(233, 69, 96, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(233, 69, 96, 0); }
+}
+
 /* ===== 티켓 양도 페이지 (TicketTransferBoard) ===== */
 
 .ticket-transfer-page {

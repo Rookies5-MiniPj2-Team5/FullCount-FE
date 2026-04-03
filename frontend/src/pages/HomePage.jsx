@@ -3,6 +3,7 @@ import { TeamBadge } from '../components/TeamComponents'
 import KboStandings from '../components/KboStandings'
 import TodaysGame from '../components/TodaysGame'
 import LoginCard from '../components/LoginCard'
+import LiveChatPanel from '../components/LiveChatPanel'
 import stadiumBg from '../assets/stadium_hero.png'
 
 // status: 'recruiting' | 'closed' | 'urgent'
@@ -48,6 +49,9 @@ export default function HomePage({ onNavigate }) {
   const [myTeam, setMyTeam] = useState(() => {
     try { return localStorage.getItem('myTeam') || null } catch { return null }
   })
+
+  // ── 실시간 응원 채팅 상태 ──
+  const [activeChatGame, setActiveChatGame] = useState(null)
 
   function handleMyTeamChange(teamId) {
     setMyTeam(teamId)
@@ -103,7 +107,10 @@ export default function HomePage({ onNavigate }) {
           </div>
 
           {/* ── 오늘의 경기 (실시간 스코어 + 날씨) ── */}
-          <TodaysGame myTeam={myTeam} />
+          <TodaysGame
+            myTeam={myTeam}
+            onJoinChat={(game) => setActiveChatGame(game)}
+          />
 
           {/* 최신 모집글 */}
           <div className="home-section">
@@ -142,6 +149,16 @@ export default function HomePage({ onNavigate }) {
           <KboStandings myTeam={myTeam} onMyTeamChange={handleMyTeamChange} />
         </div>
       </div>
+
+      {/* 실시간 응원 채팅 패널 (홈페이지 오버레이) */}
+      {activeChatGame && (
+        <LiveChatPanel
+          gameId={`${activeChatGame.gameId || activeChatGame.id}`}
+          homeTeam={activeChatGame.homeTeam}
+          awayTeam={activeChatGame.awayTeam}
+          onClose={() => setActiveChatGame(null)}
+        />
+      )}
     </div>
   )
 }
