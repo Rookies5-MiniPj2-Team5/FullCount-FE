@@ -165,10 +165,12 @@ export default function App() {
         </div>
       </main>
 
-      <ChatFab
-        currentUser={user}
-        onOpenChat={handleOpenChat}
-      />
+      {user && (
+        <ChatFab
+          currentUser={user}
+          onOpenChat={handleOpenChat}
+        />
+      )}
 
       {chatRoom && (
         <ChatPage
