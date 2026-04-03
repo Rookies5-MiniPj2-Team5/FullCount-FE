@@ -405,7 +405,13 @@ export default function MeetupDetailPage({ postId, onBack }) {
                     width: "fit-content" // 내용 크기에 맞춤
                 }}>
                     <button
-                        onClick={() => setIsApplyModalOpen(true)}
+                        onClick={() => {
+                            if (!user) {
+                                alert('로그인 후 이용 가능합니다.');
+                                return;
+                            }
+                            setIsApplyModalOpen(true);
+                        }}
                         style={{
                             padding: "12px 32px",
                             background: '#e94560',

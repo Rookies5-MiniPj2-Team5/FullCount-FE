@@ -218,7 +218,18 @@ export default function MeetupPage({ onSelectPost, initialOpen }) {
           <div style={{ textAlign: 'center', padding: '40px' }}>로딩 중...</div>
         ) : (
           <div className="card-grid">
-            <div onClick={() => setIsModalOpen(true)} style={{ cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "220px", borderRadius: '16px', border: '2px dashed #ddd', backgroundColor: '#f9f9f9', transition: 'all 0.2s ease' }} onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#ef4b5f'; e.currentTarget.style.backgroundColor = '#fff5f6'; }} onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#ddd'; e.currentTarget.style.backgroundColor = '#f9f9f9'; }}>
+            <div
+              onClick={() => {
+                if (!user) {
+                  alert('로그인 후 이용 가능합니다.');
+                  return;
+                }
+                setIsModalOpen(true);
+              }}
+              style={{ cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "220px", borderRadius: '16px', border: '2px dashed #ddd', backgroundColor: '#f9f9f9', transition: 'all 0.2s ease' }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#ef4b5f'; e.currentTarget.style.backgroundColor = '#fff5f6'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#ddd'; e.currentTarget.style.backgroundColor = '#f9f9f9'; }}
+            >
               <div style={{ fontSize: '40px', color: '#ef4b5f', marginBottom: '8px' }}>+</div>
               <div style={{ fontSize: '14px', fontWeight: '700', color: '#888' }}>새 모집글 작성</div>
             </div>

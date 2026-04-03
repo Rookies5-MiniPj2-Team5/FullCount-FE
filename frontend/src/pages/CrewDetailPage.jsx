@@ -240,7 +240,18 @@ export default function CrewDetailPage({
 
       {!isFull && !applyDone && !isUserMember && (
         <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", padding: "8px 16px", background: "#fff", borderRadius: "20px", border: "1px solid #eee", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", zIndex: 100 }}>
-          <button onClick={() => setIsApplyModalOpen(true)} style={{ padding: "12px 32px", background: teamColor, color: "#fff", border: "none", borderRadius: "12px", fontWeight: 700, fontSize: 16, cursor: "pointer" }}>⚾ 직관 크루 신청하기</button>
+          <button
+            onClick={() => {
+              if (!currentUserId) {
+                alert('로그인 후 이용 가능합니다.');
+                return;
+              }
+              setIsApplyModalOpen(true);
+            }}
+            style={{ padding: "12px 32px", background: teamColor, color: "#fff", border: "none", borderRadius: "12px", fontWeight: 700, fontSize: 16, cursor: "pointer" }}
+          >
+            ⚾ 직관 크루 신청하기
+          </button>
         </div>
       )}
 
