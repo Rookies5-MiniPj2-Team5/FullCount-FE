@@ -44,6 +44,7 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
+
   // 🌟 2. 상태 변경과 동시에 브라우저 방문 기록(History) 업데이트
   const navigateTo = (newTab, newPostId = null) => {
     const searchParams = new URLSearchParams();

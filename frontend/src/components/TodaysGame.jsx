@@ -108,8 +108,11 @@ function BaseDiamond({ bases = [false, false, false] }) {
   )
 }
 
+// ── 데모 모드 전용 (발표 시 실시간 경기가 아닐 때도 항상 활성화) ──
+const IS_DEMO_MODE = true;
+
 // 단일 경기 카드
-function GameCard({ game, isMyTeam }) {
+function GameCard({ game, isMyTeam, onJoinChat }) {
   const homeColor = TEAM_COLORS[game.homeTeam] || '#e94560'
   const awayColor = TEAM_COLORS[game.awayTeam] || '#444'
 
@@ -148,7 +151,7 @@ function GameCard({ game, isMyTeam }) {
           {TEAM_LOGO[game.awayTeam] && (
             <img src={TEAM_LOGO[game.awayTeam]} alt={game.awayTeam} className="tgc-logo" />
           )}
-          <span className="tgc-team-name" style={{ color: awayColor }}>
+          <span className="tgc-team-name" style={{ color: '#fff' }}>
             {TEAM_NAME[game.awayTeam] ?? game.awayTeam}
           </span>
           <span className="tgc-role-label">원정</span>
@@ -187,7 +190,7 @@ function GameCard({ game, isMyTeam }) {
         {/* 홈팀 */}
         <div className="tgc-team tgc-team--home">
           <span className="tgc-role-label">홈</span>
-          <span className="tgc-team-name" style={{ color: homeColor }}>
+          <span className="tgc-team-name" style={{ color: '#fff' }}>
             {TEAM_NAME[game.homeTeam] ?? game.homeTeam}
           </span>
           {TEAM_LOGO[game.homeTeam] && (
@@ -196,8 +199,8 @@ function GameCard({ game, isMyTeam }) {
         </div>
       </div>
 
-      {/* 하단: 라이브 정보 (이닝 중일 때만) */}
-      {game.status === 'live' && (
+      {/* 하단: 라이브 정보 (이닝 중일 때만) -- 하단 버튼과의 여백을 위해 마진 추가 가능 */}
+      {(game.status === 'live') && (
         <div className="tgc-live-info">
           <div className="tgc-live-detail">
             <BaseDiamond bases={game.bases} />
@@ -228,6 +231,19 @@ function GameCard({ game, isMyTeam }) {
           <span>{game.pitcher.home}</span>
         </div>
       )}
+
+      {/* 실시간 응원 참여 버튼 (데모 모드 시 항상 노출) */}
+      {(game.status === 'live' || IS_DEMO_MODE) && (
+        <button
+          className="tgc-join-btn"
+          onClick={(e) => {
+            e.stopPropagation();
+            onJoinChat && onJoinChat(game);
+          }}
+        >
+          🔴 실시간 응원 참여
+        </button>
+      )}
     </div>
   )
 }
@@ -235,8 +251,9 @@ function GameCard({ game, isMyTeam }) {
 // ─────────────────────────────────────────
 // 메인 컴포넌트
 // props: myTeam (string|null) — 내 팀 ID
+// onJoinChat: (game) => void  — 채팅 참여 핸들러
 // ─────────────────────────────────────────
-export default function TodaysGame({ myTeam }) {
+export default function TodaysGame({ myTeam, onJoinChat }) {
   const [games, setGames] = useState(MOCK_LIVE_GAMES)
   const [lastFetched, setLastFetched] = useState(null)
   const [apiAvailable, setApiAvailable] = useState(false)
@@ -318,7 +335,14 @@ export default function TodaysGame({ myTeam }) {
       <div className="todays-game-list">
         {sortedGames.map((game) => {
           const isMyTeam = myTeam && (game.homeTeam === myTeam || game.awayTeam === myTeam)
-          return <GameCard key={game.id} game={game} isMyTeam={!!isMyTeam} />
+          return (
+            <GameCard
+              key={game.id}
+              game={game}
+              isMyTeam={!!isMyTeam}
+              onJoinChat={onJoinChat}
+            />
+          )
         })}
       </div>
     </div>
