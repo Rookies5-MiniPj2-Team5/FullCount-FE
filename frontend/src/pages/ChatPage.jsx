@@ -58,7 +58,7 @@ export default function ChatPage({
 
       if (isDm && !currentRid) {
         try {
-          const res = await api.post(`/api/chat/dm/crew/${crew.id}`);
+          const res = await api.post(`/chat/rooms/dm/crew/${crew.id}`);
           currentRid = res.data.id;
           setRoomId(currentRid);
         } catch (err) {
@@ -78,8 +78,9 @@ export default function ChatPage({
       client.debug = null;
       clientRef.current = client;
 
+      const token = localStorage.getItem("accessToken");
       client.connect(
-        {},
+        { Authorization: `Bearer ${token}` },
         () => {
           console.log(`[Chat] 연결 성공 - roomId: ${currentRid}`);
           setConnected(true);
