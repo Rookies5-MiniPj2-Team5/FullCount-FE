@@ -109,7 +109,7 @@ export default function ChatFab({ currentUser, onOpenChat }) {
     onOpenChat?.({
       id: room.chatRoomId,
       title: room.title,
-      roomType: room.Type,
+      roomType: room.type,
     });
   };
 
@@ -142,7 +142,7 @@ export default function ChatFab({ currentUser, onOpenChat }) {
               rooms
                 .sort((a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt))
                 .map((room) => (
-                  <RoomItem key={room.id} room={room} onClick={handleRoomClick} />
+                  <RoomItem key={room.chatRoomId} room={room} onClick={handleRoomClick} />
                 ))
             )}
           </div>
