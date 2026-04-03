@@ -157,7 +157,7 @@ export default function MeetupPage({ onSelectPost, initialOpen }) {
     return true;
   });
 
-  // 🚨 동일 팀 선택 방지 로직
+  // 동일 팀 선택 방지 로직
   const handleTeamChange = (type, value) => {
       if (type === 'home' && value === formData.awayTeamId && value !== '') {
           alert('홈 팀과 어웨이 팀은 같을 수 없습니다.');
@@ -258,7 +258,7 @@ export default function MeetupPage({ onSelectPost, initialOpen }) {
               <textarea placeholder="내용" style={{ width: '100%', height: 100, marginBottom: 12, borderRadius: 10, padding: 10, border: '1px solid #ddd', boxSizing: 'border-box', resize: 'none' }} value={formData.content} onChange={e => setFormData({ ...formData, content: e.target.value })} required />
               
               <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-                {/* 🚨 동일 팀 선택 방지 로직(handleTeamChange) 연결 */}
+                {/* 동일 팀 선택 방지 로직(handleTeamChange) 연결 */}
                 <select style={{ flex: 1, padding: 8, borderRadius: 10, border: '1px solid #ddd' }} value={formData.homeTeamId} onChange={e => handleTeamChange('home', e.target.value)} required>
                   <option value="">홈 팀</option>
                   {TEAMS.filter(t => t.id !== 'ALL').map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
@@ -269,10 +269,10 @@ export default function MeetupPage({ onSelectPost, initialOpen }) {
                 </select>
               </div>
 
-              {/* 🚨 홈팀 선택 시 예상 경기장 UI 표시 */}
+              {/* 홈팀 선택 시 예상 경기장 UI 표시 */}
               {formData.homeTeamId && (
                   <div style={{ marginBottom: 12, padding: '10px', background: '#f5f5f5', borderRadius: 10, fontSize: 13, color: '#555', textAlign: 'center', border: '1px solid #eee' }}>
-                      📍 예상 경기장: <b>{STADIUMS[formData.homeTeamId] || '미정'}</b>
+                      예상 경기장: <b>{STADIUMS[formData.homeTeamId] || '미정'}</b>
                   </div>
               )}
 
