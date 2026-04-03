@@ -3,25 +3,14 @@ import ApplyModal from '../components/ApplyModal';
 import { StatusBadge } from '../components/StatusBadge';
 import { TeamBadge } from '../components/TeamComponents';
 import { createOrGetMeetupGroupJoinRoom } from '../api/chat';
-import {
-  applyMeetupMate,
-  getMeetupMateMembers,
-  getMeetupPost,
-} from '../api/meetup';
+import { applyMeetupMate, getMeetupMateMembers, getMeetupPost } from '../api/meetup';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/api';
 
 const AUTHOR_TEAM_MAP = {
-  'LG 트윈스': 'LG',
-  '두산 베어스': 'DU',
-  'SSG 랜더스': 'SSG',
-  'KIA 타이거즈': 'KIA',
-  '삼성 라이온즈': 'SA',
-  '롯데 자이언츠': 'LO',
-  '한화 이글스': 'HH',
-  'KT 위즈': 'KT',
-  'NC 다이노스': 'NC',
-  '키움 히어로즈': 'WO',
+  'LG 트윈스': 'LG', '두산 베어스': 'DU', 'SSG 랜더스': 'SSG',
+  'KIA 타이거즈': 'KIA', '삼성 라이온즈': 'SA', '롯데 자이언츠': 'LO',
+  '한화 이글스': 'HH', 'KT 위즈': 'KT', 'NC 다이노스': 'NC', '키움 히어로즈': 'WO',
 };
 
 const unwrapResponseData = (responseData) => {
@@ -40,7 +29,7 @@ const getAuthorTeamCode = (authorTeam) => {
   return matchedEntry?.[1] || 'LG';
 };
 
-// currentParticipants 응답 필드명 정규화
+// currentParticipants, maxParticipants 응답 필드명 정규화
 const normalizePost = (post) => {
   if (!post) return post;
   return {
@@ -50,6 +39,12 @@ const normalizePost = (post) => {
       post.currentParticipantCount ??
       post.participantCount ??
       post.participants ??
+      0,
+    maxParticipants:
+      post.maxParticipants ??
+      post.maxParticipantCount ??
+      post.maximumParticipants ??
+      post.capacity ??
       0,
   };
 };
@@ -66,78 +61,25 @@ const getMaxParticipantCount = (post) => {
 
 function MemberCard({ member }) {
   const avatarLabel = member.nickname?.substring(0, 1) || '?';
-
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'flex-start',
-        gap: 12,
-        padding: '12px 0',
-        borderBottom: '1px solid #f5f5f5',
-      }}
-    >
-      <div
-        style={{
-          width: 38,
-          height: 38,
-          borderRadius: '50%',
-          background: '#1a2a4a',
-          color: '#fff',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontWeight: 700,
-          fontSize: 15,
-          flexShrink: 0,
-          overflow: 'hidden',
-        }}
-      >
-        {member.profileImage ? (
-          <img
-            src={member.profileImage}
-            alt={member.nickname}
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-          />
-        ) : (
-          avatarLabel
-        )}
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 0', borderBottom: '1px solid #f5f5f5' }}>
+      <div style={{ width: 38, height: 38, borderRadius: '50%', background: '#1a2a4a', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 15, flexShrink: 0, overflow: 'hidden' }}>
+        {member.profileImage
+          ? <img src={member.profileImage} alt={member.nickname} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          : avatarLabel}
       </div>
-
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: '#1a2a4a' }}>{member.nickname}</div>
           {member.isLeader && (
-            <span
-              style={{
-                fontSize: 11,
-                fontWeight: 700,
-                padding: '2px 8px',
-                borderRadius: 999,
-                background: '#fff0f3',
-                color: '#e94560',
-              }}
-            >
-              작성자
-            </span>
+            <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: '#fff0f3', color: '#e94560' }}>작성자</span>
           )}
           {typeof member.mannerTemperature === 'number' && (
-            <span style={{ fontSize: 12, color: '#777' }}>
-              매너온도 {member.mannerTemperature.toFixed(1)}
-            </span>
+            <span style={{ fontSize: 12, color: '#777' }}>매너온도 {member.mannerTemperature.toFixed(1)}</span>
           )}
         </div>
-
         {member.applyMessage && (
-          <div
-            style={{
-              fontSize: 12,
-              color: '#666',
-              lineHeight: 1.6,
-              whiteSpace: 'pre-wrap',
-              wordBreak: 'keep-all',
-            }}
-          >
+          <div style={{ fontSize: 12, color: '#666', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'keep-all' }}>
             {member.applyMessage}
           </div>
         )}
@@ -146,7 +88,7 @@ function MemberCard({ member }) {
   );
 }
 
-export default function MeetupDetailPage({ postId, onBack }) {
+export default function MeetupDetailPage({ postId, onBack, onOpenChat }) {
   const { user } = useAuth();
 
   const [post, setPost] = useState(null);
@@ -155,9 +97,7 @@ export default function MeetupDetailPage({ postId, onBack }) {
   const [membersLoading, setMembersLoading] = useState(false);
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
   const [tab, setTab] = useState('info');
-
-  // 그룹 채팅방 상태
-  const [groupChatRoomId, setGroupChatRoomId] = useState(null); // 이미 생성된 채팅방 ID
+  const [groupChatRoomId, setGroupChatRoomId] = useState(null);
   const [chatRoomLoading, setChatRoomLoading] = useState(false);
 
   const isAuthor = user?.nickname === post?.authorNickname;
@@ -165,23 +105,13 @@ export default function MeetupDetailPage({ postId, onBack }) {
   const maxParticipants = getMaxParticipantCount(post);
   const isFull = maxParticipants > 0 && currentParticipants >= maxParticipants;
   const authorTeamCode = getAuthorTeamCode(post?.authorTeam);
-
-  // 현재 유저가 신청자 목록에 포함되어 있는지
   const myMemberInfo = members.find((m) => m.nickname === user?.nickname) || null;
   const isParticipant = !!myMemberInfo;
 
-  // 그룹 채팅방 버튼 활성화 조건
-  // - 채팅방이 이미 있으면 → 작성자 + 신청자 모두 활성화
-  // - 채팅방이 없으면 → 작성자이고 정원이 찼을 때만 활성화
   const canAccessChatRoom = !!groupChatRoomId && (isAuthor || isParticipant);
   const canCreateChatRoom = !groupChatRoomId && isAuthor && isFull;
   const isChatButtonActive = canAccessChatRoom || canCreateChatRoom;
-
-  const chatButtonLabel = chatRoomLoading
-    ? '처리 중...'
-    : groupChatRoomId
-    ? '그룹 채팅방 입장'
-    : '채팅방 생성';
+  const chatButtonLabel = chatRoomLoading ? '처리 중...' : groupChatRoomId ? '그룹 채팅방 입장' : '채팅방 생성';
 
   const fetchPost = async () => {
     try {
@@ -189,11 +119,7 @@ export default function MeetupDetailPage({ postId, onBack }) {
       const res = await getMeetupPost(postId);
       const data = normalizePost(unwrapResponseData(res.data));
       setPost(data);
-
-      // 게시글에 chatRoomId가 포함되어 있을 경우 바로 세팅
-      if (data?.chatRoomId) {
-        setGroupChatRoomId(data.chatRoomId);
-      }
+      if (data?.chatRoomId) setGroupChatRoomId(data.chatRoomId);
     } catch (error) {
       console.error('게시글 상세 조회 실패:', error);
       alert('게시글을 불러오지 못했습니다.');
@@ -240,15 +166,28 @@ export default function MeetupDetailPage({ postId, onBack }) {
     }
   };
 
+  const handleOpenDm = () => {
+    if (!user) { alert('로그인이 필요합니다.'); return; }
+    if (onOpenChat && post?.authorNickname) {
+      onOpenChat({
+        id: `dm-${[user.nickname, post.authorNickname].sort().join('-')}`,
+        postId: post?.id,
+        roomType: 'ONE_ON_ONE',
+        title: post.authorNickname,
+        dmTargetNickname: post.authorNickname,
+        lastMessage: '',
+        lastMessageAt: new Date().toISOString(),
+        unreadCount: 0,
+      });
+    }
+  };
+
   const handleChatRoomButton = async () => {
     if (!isChatButtonActive) return;
-
-    // 채팅방이 이미 존재 → 조회 API 호출
     if (groupChatRoomId) {
       try {
         setChatRoomLoading(true);
         await api.get(`/chat/rooms/${groupChatRoomId}`);
-        // 조회 성공 시 채팅방으로 이동하는 로직 추가 (필요 시 onEnterChat 등 prop으로 처리)
         alert(`채팅방(${groupChatRoomId})에 입장합니다.`);
       } catch (error) {
         console.error('채팅방 조회 실패:', error);
@@ -258,20 +197,13 @@ export default function MeetupDetailPage({ postId, onBack }) {
       }
       return;
     }
-
-    // 채팅방 신규 생성 (작성자 + 정원 마감)
     try {
       setChatRoomLoading(true);
       const res = await createOrGetMeetupGroupJoinRoom(postId);
       const roomData = unwrapResponseData(res?.data);
       const createdRoomId = roomData?.id ?? roomData?.chatRoomId ?? roomData?.roomId;
-
-      if (createdRoomId) {
-        setGroupChatRoomId(createdRoomId);
-        alert('그룹 채팅방이 생성되었습니다.');
-      } else {
-        alert('그룹 채팅방이 생성되었습니다.');
-      }
+      if (createdRoomId) setGroupChatRoomId(createdRoomId);
+      alert('그룹 채팅방이 생성되었습니다.');
     } catch (error) {
       console.error('그룹 채팅방 생성 실패:', error);
       alert('그룹 채팅방 생성에 실패했습니다.');
@@ -292,43 +224,25 @@ export default function MeetupDetailPage({ postId, onBack }) {
   if (!post) return null;
 
   const applyTabLabel = isAuthor ? `신청 목록 (${members.length})` : '내 신청 현황';
+  // 프로그레스바 비율 — maxParticipants가 0이면 0%로 안전 처리
+  const progressRatio = maxParticipants > 0 ? Math.min(currentParticipants / maxParticipants, 1) : 0;
 
   return (
     <div>
       <div className="top-bar" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <button onClick={onBack} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', padding: 0 }}>
-          ←
-        </button>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', padding: 0 }}>←</button>
         <h1 style={{ fontSize: 18, margin: 0 }}>모집글 상세</h1>
       </div>
 
       <div className="page-content" style={{ paddingBottom: 120 }}>
-        <div
-          style={{
-            background: 'linear-gradient(135deg, #1a2a4a 0%, #e94560 100%)',
-            borderRadius: 16,
-            padding: '24px 20px',
-            color: '#fff',
-            marginBottom: 16,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-          }}
-        >
+        {/* 헤더 배너 */}
+        <div style={{ background: 'linear-gradient(135deg, #1a2a4a 0%, #e94560 100%)', borderRadius: 16, padding: '24px 20px', color: '#fff', marginBottom: 16, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-            <span style={{ background: 'rgba(255,255,255,0.2)', color: '#fff', padding: '4px 14px', borderRadius: 20, fontSize: 13, fontWeight: 700 }}>
-              {post.homeTeamName}
-            </span>
+            <span style={{ background: 'rgba(255,255,255,0.2)', color: '#fff', padding: '4px 14px', borderRadius: 20, fontSize: 13, fontWeight: 700 }}>{post.homeTeamName}</span>
             <span style={{ fontSize: 14, fontWeight: 800, opacity: 0.8 }}>VS</span>
-            <span style={{ background: 'rgba(255,255,255,0.2)', color: '#fff', padding: '4px 14px', borderRadius: 20, fontSize: 13, fontWeight: 700 }}>
-              {post.awayTeamName}
-            </span>
+            <span style={{ background: 'rgba(255,255,255,0.2)', color: '#fff', padding: '4px 14px', borderRadius: 20, fontSize: 13, fontWeight: 700 }}>{post.awayTeamName}</span>
           </div>
-
-          <div style={{ textAlign: 'center', fontSize: 18, fontWeight: 800, marginBottom: 14, wordBreak: 'keep-all', lineHeight: 1.4 }}>
-            {post.title}
-          </div>
-
+          <div style={{ textAlign: 'center', fontSize: 18, fontWeight: 800, marginBottom: 14, wordBreak: 'keep-all', lineHeight: 1.4 }}>{post.title}</div>
           <div style={{ display: 'flex', justifyContent: 'center', gap: 14, fontSize: 13, opacity: 0.9, flexWrap: 'wrap' }}>
             <span>📍 {post.stadium || '경기장 미정'}</span>
             <span>📅 {post.matchDate}</span>
@@ -336,65 +250,48 @@ export default function MeetupDetailPage({ postId, onBack }) {
           </div>
         </div>
 
+        {/* 인원/상태 카드 */}
         <div style={{ background: '#fff', borderRadius: 12, padding: 16, marginBottom: 12, border: '1px solid #eee' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
             <StatusBadge status={post.status} />
             <span style={{ fontSize: 13, color: '#e94560', fontWeight: 700 }}>
-              👥 {currentParticipants} / {maxParticipants}명
+              👥 {currentParticipants} / {maxParticipants > 0 ? maxParticipants : '?'}명
             </span>
           </div>
-
           <div style={{ height: 8, background: '#f0f0f0', borderRadius: 999, overflow: 'hidden', marginBottom: 10 }}>
-            <div
-              style={{
-                height: '100%',
-                width: maxParticipants ? `${Math.min((currentParticipants / maxParticipants) * 100, 100)}%` : '0%',
-                background: isFull ? '#ef4444' : '#e94560',
-                borderRadius: 999,
-                transition: 'width 0.4s ease',
-              }}
-            />
+            <div style={{
+              height: '100%',
+              width: `${progressRatio * 100}%`,
+              background: isFull ? '#ef4444' : '#e94560',
+              borderRadius: 999,
+              transition: 'width 0.4s ease',
+            }} />
           </div>
-
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#999' }}>
             <span>조회수 {post.viewCount ?? 0}</span>
             <span>{post.createdAt?.slice(0, 10)}</span>
           </div>
         </div>
 
+        {/* 탭 */}
         <div style={{ display: 'flex', background: '#fff', borderRadius: 12, border: '1px solid #eee', marginBottom: 12, overflow: 'hidden' }}>
-          {[
-            { key: 'info', label: '모집 정보' },
-            { key: 'apply', label: applyTabLabel },
-          ].map(({ key, label }) => (
+          {[{ key: 'info', label: '모집 정보' }, { key: 'apply', label: applyTabLabel }].map(({ key, label }) => (
             <button
               key={key}
               onClick={() => setTab(key)}
-              style={{
-                flex: 1,
-                padding: '12px 0',
-                background: 'none',
-                border: 'none',
-                borderBottom: tab === key ? '2px solid #e94560' : '2px solid transparent',
-                fontSize: 14,
-                fontWeight: 700,
-                color: tab === key ? '#e94560' : '#999',
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-              }}
+              style={{ flex: 1, padding: '12px 0', background: 'none', border: 'none', borderBottom: tab === key ? '2px solid #e94560' : '2px solid transparent', fontSize: 14, fontWeight: 700, color: tab === key ? '#e94560' : '#999', cursor: 'pointer', fontFamily: 'inherit' }}
             >
               {label}
             </button>
           ))}
         </div>
 
+        {/* 모집 정보 탭 */}
         {tab === 'info' && (
           <>
             <div style={{ background: '#fff', borderRadius: 12, padding: 16, marginBottom: 12, border: '1px solid #eee' }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: '#1a2a4a', marginBottom: 8 }}>상세 설명</div>
-              <div style={{ fontSize: 13, color: '#666', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
-                {post.content}
-              </div>
+              <div style={{ fontSize: 13, color: '#666', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{post.content}</div>
             </div>
 
             <div style={{ background: '#fff', borderRadius: 12, padding: 16, marginBottom: 12, border: '1px solid #eee' }}>
@@ -419,32 +316,15 @@ export default function MeetupDetailPage({ postId, onBack }) {
               <div style={{ fontSize: 13, fontWeight: 700, color: '#1a2a4a', marginBottom: 12 }}>작성자</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div
-                  style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: '50%',
-                    background: 'linear-gradient(135deg, #1a2a4a, #e94560)',
-                    color: '#fff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: 700,
-                    fontSize: 18,
-                    flexShrink: 0,
-                    boxShadow: '0 0 0 3px #e9456040',
-                    overflow: 'hidden',
-                  }}
+                  onClick={handleOpenDm}
+                  style={{ width: 44, height: 44, borderRadius: '50%', background: 'linear-gradient(135deg, #1a2a4a, #e94560)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 18, flexShrink: 0, boxShadow: '0 0 0 3px #e9456040', overflow: 'hidden', cursor: 'pointer' }}
                 >
-                  {post.profileImage ? (
-                    <img src={post.profileImage} alt={post.authorNickname} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : (
-                    post.authorNickname?.substring(0, 1)
-                  )}
+                  {post.profileImage
+                    ? <img src={post.profileImage} alt={post.authorNickname} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    : post.authorNickname?.substring(0, 1)}
                 </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: '#1a2a4a', marginBottom: 4 }}>
-                    {post.authorNickname}
-                  </div>
+                <div style={{ flex: 1, cursor: 'pointer' }} onClick={handleOpenDm}>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: '#1a2a4a', marginBottom: 4 }}>{post.authorNickname}</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <TeamBadge teamId={authorTeamCode} />
                     <span style={{ fontSize: 12, color: '#777' }}>{post.authorTeam}</span>
@@ -452,43 +332,33 @@ export default function MeetupDetailPage({ postId, onBack }) {
                     <span style={{ fontSize: 12, color: '#bbb' }}>조회 {post.viewCount ?? 0}</span>
                   </div>
                 </div>
+                {!isAuthor && (
+                  <button onClick={handleOpenDm} style={{ padding: '8px 14px', borderRadius: 10, background: '#f5f5f5', border: '1px solid #eee', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                    💬 1:1 문의
+                  </button>
+                )}
               </div>
             </div>
           </>
         )}
 
+        {/* 신청 현황 탭 */}
         {tab === 'apply' && (
           <>
-            {/* 그룹 채팅방 카드: 작성자 또는 채팅방 있는 경우 신청자도 표시 */}
             {(isAuthor || canAccessChatRoom) && (
               <div style={{ background: '#fff', borderRadius: 12, padding: 16, marginBottom: 12, border: '1px solid #eee' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                   <div>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: '#1a2a4a', marginBottom: 4 }}>
-                      그룹 채팅방
-                    </div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: '#1a2a4a', marginBottom: 4 }}>그룹 채팅방</div>
                     <div style={{ fontSize: 12, color: '#888' }}>
-                      {groupChatRoomId
-                        ? '채팅방이 개설되었습니다. 입장할 수 있습니다.'
-                        : '참여 인원이 모두 찼을 때 작성자가 채팅방을 생성할 수 있습니다.'}
+                      {groupChatRoomId ? '채팅방이 개설되었습니다. 입장할 수 있습니다.' : '참여 인원이 모두 찼을 때 작성자가 채팅방을 생성할 수 있습니다.'}
                     </div>
                   </div>
                   <button
                     type="button"
                     onClick={handleChatRoomButton}
                     disabled={!isChatButtonActive || chatRoomLoading}
-                    style={{
-                      padding: '10px 14px',
-                      background: isChatButtonActive ? '#e94560' : '#ccc',
-                      color: '#fff',
-                      border: 'none',
-                      borderRadius: 10,
-                      fontWeight: 700,
-                      cursor: isChatButtonActive && !chatRoomLoading ? 'pointer' : 'not-allowed',
-                      opacity: isChatButtonActive && !chatRoomLoading ? 1 : 0.8,
-                      whiteSpace: 'nowrap',
-                      minWidth: 90,
-                    }}
+                    style={{ padding: '10px 14px', background: isChatButtonActive ? '#e94560' : '#ccc', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, cursor: isChatButtonActive && !chatRoomLoading ? 'pointer' : 'not-allowed', opacity: isChatButtonActive && !chatRoomLoading ? 1 : 0.8, whiteSpace: 'nowrap', minWidth: 90 }}
                   >
                     {chatButtonLabel}
                   </button>
@@ -501,9 +371,7 @@ export default function MeetupDetailPage({ postId, onBack }) {
                 <div style={{ fontSize: 13, fontWeight: 700, color: '#333', marginBottom: 8 }}>내 신청 현황</div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: '#1a2a4a', marginBottom: 4 }}>{myMemberInfo.nickname}</div>
                 {myMemberInfo.applyMessage && (
-                  <div style={{ fontSize: 12, color: '#666', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
-                    {myMemberInfo.applyMessage}
-                  </div>
+                  <div style={{ fontSize: 12, color: '#666', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{myMemberInfo.applyMessage}</div>
                 )}
               </div>
             )}
@@ -516,9 +384,7 @@ export default function MeetupDetailPage({ postId, onBack }) {
 
             {!membersLoading && members.length > 0 && (
               <div style={{ background: '#fff', borderRadius: 12, padding: 16, marginBottom: 12, border: '1px solid #eee' }}>
-                <div style={{ fontSize: 15, fontWeight: 700, color: '#1a2a4a', marginBottom: 12 }}>
-                  참여 멤버 목록 ({members.length}명)
-                </div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: '#1a2a4a', marginBottom: 12 }}>참여 멤버 목록 ({members.length}명)</div>
                 {members.map((member, index) => (
                   <MemberCard key={`${member.nickname}-${index}`} member={member} />
                 ))}
@@ -528,24 +394,16 @@ export default function MeetupDetailPage({ postId, onBack }) {
             {!membersLoading && isAuthor && members.length === 0 && (
               <div style={{ background: '#fff', borderRadius: 12, padding: '40px 16px', border: '1px solid #eee', textAlign: 'center' }}>
                 <div style={{ fontSize: 32, marginBottom: 12 }}>📭</div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: '#1a2a4a', marginBottom: 6 }}>
-                  아직 신청자가 없어요
-                </div>
-                <div style={{ fontSize: 13, color: '#999' }}>
-                  신청 멤버가 생기면 여기에서 바로 확인할 수 있습니다.
-                </div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: '#1a2a4a', marginBottom: 6 }}>아직 신청자가 없어요</div>
+                <div style={{ fontSize: 13, color: '#999' }}>신청 멤버가 생기면 여기에서 바로 확인할 수 있습니다.</div>
               </div>
             )}
 
             {!membersLoading && !isAuthor && !myMemberInfo && (
               <div style={{ background: '#fff', borderRadius: 12, padding: '40px 16px', border: '1px solid #eee', textAlign: 'center' }}>
                 <div style={{ fontSize: 32, marginBottom: 12 }}>📝</div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: '#1a2a4a', marginBottom: 6 }}>
-                  아직 신청하지 않았어요
-                </div>
-                <div style={{ fontSize: 13, color: '#999' }}>
-                  하단의 신청하기 버튼을 눌러 메이트 신청을 진행해보세요.
-                </div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: '#1a2a4a', marginBottom: 6 }}>아직 신청하지 않았어요</div>
+                <div style={{ fontSize: 13, color: '#999' }}>하단의 신청하기 버튼을 눌러 메이트 신청을 진행해보세요.</div>
               </div>
             )}
           </>
@@ -553,44 +411,10 @@ export default function MeetupDetailPage({ postId, onBack }) {
       </div>
 
       {!isAuthor && post.status !== 'CLOSED' && (
-        <div
-          style={{
-            position: 'fixed',
-            bottom: 80,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            padding: '8px 16px',
-            background: '#fff',
-            borderRadius: '20px',
-            border: '1px solid #eee',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-            zIndex: 100,
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            width: 'fit-content',
-          }}
-        >
+        <div style={{ position: 'fixed', bottom: 80, left: '50%', transform: 'translateX(-50%)', padding: '8px 16px', background: '#fff', borderRadius: '20px', border: '1px solid #eee', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 100, display: 'flex', justifyContent: 'center', alignItems: 'center', width: 'fit-content' }}>
           <button
-            onClick={() => {
-              if (!user) {
-                alert('로그인 후 이용 가능합니다.');
-                return;
-              }
-              setIsApplyModalOpen(true);
-            }}
-            style={{
-              padding: '12px 32px',
-              background: '#e94560',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '12px',
-              fontWeight: 700,
-              fontSize: 16,
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-              whiteSpace: 'nowrap',
-            }}
+            onClick={() => { if (!user) { alert('로그인 후 이용 가능합니다.'); return; } setIsApplyModalOpen(true); }}
+            style={{ padding: '12px 32px', background: '#e94560', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 700, fontSize: 16, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
           >
             직관 메이트 신청하기
           </button>
@@ -598,32 +422,8 @@ export default function MeetupDetailPage({ postId, onBack }) {
       )}
 
       {post.status === 'CLOSED' && (
-        <div
-          style={{
-            position: 'fixed',
-            bottom: 80,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            padding: '8px 16px',
-            background: '#fff',
-            borderRadius: '20px',
-            border: '1px solid #eee',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-            zIndex: 100,
-          }}
-        >
-          <div
-            style={{
-              padding: '12px 32px',
-              background: '#f5f5f5',
-              color: '#aaa',
-              borderRadius: '12px',
-              fontWeight: 700,
-              fontSize: 15,
-              textAlign: 'center',
-              whiteSpace: 'nowrap',
-            }}
-          >
+        <div style={{ position: 'fixed', bottom: 80, left: '50%', transform: 'translateX(-50%)', padding: '8px 16px', background: '#fff', borderRadius: '20px', border: '1px solid #eee', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 100 }}>
+          <div style={{ padding: '12px 32px', background: '#f5f5f5', color: '#aaa', borderRadius: '12px', fontWeight: 700, fontSize: 15, textAlign: 'center', whiteSpace: 'nowrap' }}>
             모집이 마감되었습니다
           </div>
         </div>

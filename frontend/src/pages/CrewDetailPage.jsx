@@ -13,18 +13,28 @@ const TEAM_COLORS = {
 };
 
 // ─── 멤버 아이템 컴포넌트 ───
-function MemberItem({ member }) {
+function MemberItem({ member, onClick }) {
+  const isMe = false; // logic would need currentUser, but we can just let it be clickable
+  
   return (
-    <div style={{
-      display: "flex", alignItems: "center", gap: 12,
-      padding: "10px 0",
-      borderBottom: "1px solid #f5f5f5",
-    }}>
+    <div 
+      onClick={() => onClick?.(member.nickname)}
+      style={{
+        display: "flex", alignItems: "center", gap: 12,
+        padding: "12px 0",
+        borderBottom: "1px solid #f5f5f5",
+        cursor: "pointer",
+        transition: "background 0.2s",
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#fcfcfc'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+    >
       <div style={{
         width: 38, height: 38, borderRadius: "50%",
         background: "linear-gradient(135deg, #1a2a4a, #e94560)",
         color: "#fff", display: "flex", alignItems: "center",
         justifyContent: "center", fontWeight: 700, fontSize: 15, flexShrink: 0,
+        boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
       }}>
         {member.nickname?.slice(0, 1)}
       </div>
@@ -45,7 +55,7 @@ function MemberItem({ member }) {
           )}
         </div>
         <span style={{ fontSize: 12, color: "#999" }}>
-          {BADGE_EMOJI[member.badgeLevel] || "⚾"} {member.badgeLevel || "MEMBER"}
+          {BADGE_EMOJI[member.badgeLevel] || "🌱"} {member.badgeLevel || "ROOKIE"}
         </span>
       </div>
 
@@ -62,10 +72,13 @@ function MemberItem({ member }) {
 // ─── 메인 페이지 컴포넌트 ───
 export default function CrewDetailPage({
   crew,
-  currentUserId,
+  currentUser,
   onBack,
   onOpenDmChat,
 }) {
+  if (!crew) return null;
+
+  const currentUserId = currentUser?.nickname; 
   const [tab, setTab] = useState("info");
   const [members, setMembers] = useState([]); // 실제 멤버 상태
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
@@ -73,9 +86,9 @@ export default function CrewDetailPage({
   const [loadingMembers, setLoadingMembers] = useState(false);
 
   // 설계서상 teamName 매칭을 위한 팀 키 추출
-  const teamKey = crew?.supportTeamName?.split(' ')[0] || crew?.team?.split(' ')[0];
+  const teamKey = crew.supportTeamName?.split(' ')[0] || crew.team?.split(' ')[0];
   const teamColor = TEAM_COLORS[teamKey] || "#e94560";
-  const isFull = crew?.currentParticipants >= crew?.maxParticipants;
+  const isFull = crew.currentParticipants >= crew.maxParticipants;
 
   // 1. 멤버 목록 조회 (설계서 4.2.7)
   const fetchMembers = async () => {
@@ -95,7 +108,7 @@ export default function CrewDetailPage({
   }, [crew?.id]);
 
   // 현재 유저가 멤버인지 확인
-  const isUserMember = members.some(m => m.nickname === crew.authorNickname || m.nickname === currentUserId);
+  const isUserMember = members.some(m => m.nickname === crew?.authorNickname || m.nickname === currentUserId);
 
   // 2. 참여 신청 (설계서 4.2.6)
   const handleApply = async (message) => {
@@ -109,8 +122,6 @@ export default function CrewDetailPage({
       alert(err.response?.data?.message || "신청에 실패했습니다. 이미 참여 중이거나 정원이 찼을 수 있습니다.");
     }
   };
-
-  if (!crew) return null;
 
   return (
     <div>
@@ -201,30 +212,31 @@ export default function CrewDetailPage({
               )}
             </div>
 
-            <div style={{ background: "#fff", borderRadius: 12, padding: 16, marginBottom: 12, border: "1px solid #eee" }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#1a2a4a", marginBottom: 12 }}>🏟️ 직관 정보</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                {[["경기장", crew.stadium], ["날짜", crew.matchDate], ["시간", crew.matchTime], ["좌석 구역", crew.seatArea || "협의 예정"]].map(([label, val]) => (
-                  <div key={label} style={{ background: "#f9f9f9", borderRadius: 10, padding: 12 }}>
-                    <div style={{ fontSize: 11, color: "#aaa", fontWeight: 500, marginBottom: 4 }}>{label}</div>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: "#1a2a4a" }}>{val}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div style={{ background: "#fff", borderRadius: 12, padding: 16, marginBottom: 12, border: "1px solid #eee" }}>
+            <div style={{ background: "#fff", borderRadius: 12, padding: 16, border: "1px solid #eee" }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: "#1a2a4a", marginBottom: 12 }}>⚾ 크루장</div>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ width: 44, height: 44, borderRadius: "50%", background: "linear-gradient(135deg, #1a2a4a, #e94560)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 18, flexShrink: 0, boxShadow: `0 0 0 3px ${teamColor}40` }}>
+                <div 
+                  onClick={() => onOpenDmChat?.(crew.authorNickname)}
+                  style={{ 
+                    width: 44, height: 44, borderRadius: "50%", 
+                    background: "linear-gradient(135deg, #1a2a4a, #e94560)", 
+                    color: "#fff", display: "flex", alignItems: "center", 
+                    justifyContent: "center", fontWeight: 700, fontSize: 18, 
+                    flexShrink: 0, boxShadow: `0 0 0 3px ${teamColor}40`,
+                    cursor: "pointer"
+                  }}
+                >
                   {crew.authorNickname?.slice(0, 1)}
                 </div>
-                <div style={{ flex: 1 }}>
+                <div 
+                  style={{ flex: 1, cursor: "pointer" }}
+                  onClick={() => onOpenDmChat?.(crew.authorNickname)}
+                >
                   <div style={{ fontSize: 15, fontWeight: 700, color: "#1a2a4a" }}>{crew.authorNickname}</div>
                   <div style={{ fontSize: 12, color: "#999" }}>🌡️ 매너온도 {crew.mannerTemperature || 36.5}°</div>
                 </div>
                 {!isUserMember && (
-                  <button onClick={() => onOpenDmChat?.(crew)} style={{ padding: "8px 14px", borderRadius: 10, background: "#f5f5f5", border: "1px solid #eee", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>💬 1:1 문의</button>
+                  <button onClick={() => onOpenDmChat?.(crew.authorNickname)} style={{ padding: "8px 14px", borderRadius: 10, background: "#f5f5f5", border: "1px solid #eee", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>💬 1:1 문의</button>
                 )}
               </div>
             </div>
@@ -233,7 +245,21 @@ export default function CrewDetailPage({
 
         {tab === "members" && (
           <div style={{ background: "#fff", borderRadius: 12, padding: "4px 16px", marginBottom: 12, border: "1px solid #eee" }}>
-            {loadingMembers ? <div style={{ padding: 20, textAlign: "center" }}>로딩 중...</div> : members.map((m, idx) => <MemberItem key={idx} member={m} />)}
+            {loadingMembers ? (
+              <div style={{ padding: 20, textAlign: "center" }}>로딩 중...</div>
+            ) : (
+              members.map((m, idx) => (
+                <MemberItem 
+                  key={idx} 
+                  member={m} 
+                  onClick={(nickname) => {
+                    if (onOpenDmChat && nickname !== currentUser?.nickname) {
+                      onOpenDmChat(nickname);
+                    }
+                  }}
+                />
+              ))
+            )}
           </div>
         )}
       </div>

@@ -30,16 +30,24 @@ const TEAM_CODE_MAP = {
   WO: 10,
 };
 
+const ID_TO_TEAM_NAME = {
+  1: 'LG', 2: '두산', 3: 'SSG', 4: 'KIA', 5: '삼성',
+  6: '롯데', 7: '한화', 8: 'KT', 9: 'NC', 10: '키움',
+};
+
+const STADIUMS = {
+  1: '잠실야구장', 2: '잠실야구장', 3: '인천 SSG 랜더스필드', 4: '광주-기아 챔피언스 필드',
+  5: '대구 삼성 라이온즈 파크', 6: '사직야구장', 7: '한화생명 이글스 파크', 8: '수원 KT 위즈 파크',
+  9: '창원 NC 파크', 10: '고척 스카이돔',
+  LG: '잠실야구장', DU: '잠실야구장', SSG: '인천 SSG 랜더스필드', KIA: '광주-기아 챔피언스 필드',
+  SA: '대구 삼성 라이온즈 파크', LO: '사직야구장', HH: '한화생명 이글스 파크', KT: '수원 KT 위즈 파크',
+  NC: '창원 NC 파크', WO: '고척 스카이돔',
+};
+
 const STADIUM_OPTIONS = [
-  '잠실야구장',
-  '인천SSG랜더스필드',
-  '광주-기아 챔피언스 필드',
-  '대구삼성라이온즈파크',
-  '사직야구장',
-  '한화생명이글스파크',
-  '수원KT위즈파크',
-  '창원NC파크',
-  '고척스카이돔',
+  '잠실야구장', '인천SSG랜더스필드', '광주-기아 챔피언스 필드',
+  '대구삼성라이온즈파크', '사직야구장', '한화생명이글스파크',
+  '수원KT위즈파크', '창원NC파크', '고척스카이돔',
 ];
 
 const MEETUP_DUMMY = [
@@ -50,16 +58,42 @@ const MEETUP_DUMMY = [
 
 const PAGE_SIZE = 9;
 
-// currentParticipants 응답 필드명 정규화
-const normalizePost = (post) => ({
-  ...post,
-  currentParticipants:
-    post.currentParticipants ??
-    post.currentParticipantCount ??
-    post.participantCount ??
-    post.participants ??
-    0,
-});
+const getNormalizedTeamName = (id, name) => {
+  if (id && ID_TO_TEAM_NAME[id]) return ID_TO_TEAM_NAME[id];
+  if (typeof name === 'string') {
+    if (name.includes('LG')) return 'LG';
+    if (name.includes('두산') || name === 'DU') return '두산';
+    if (name.includes('SSG')) return 'SSG';
+    if (name.includes('KIA') || name.includes('기아')) return 'KIA';
+    if (name.includes('삼성') || name === 'SA') return '삼성';
+    if (name.includes('롯데') || name === 'LO') return '롯데';
+    if (name.includes('한화') || name === 'HH') return '한화';
+    if (name.includes('KT')) return 'KT';
+    if (name.includes('NC')) return 'NC';
+    if (name.includes('키움') || name === 'WO') return '키움';
+  }
+  return '미정';
+};
+
+// currentParticipants, maxParticipants 응답 필드명 정규화
+const normalizePost = (post) => {
+  if (!post) return post;
+  return {
+    ...post,
+    currentParticipants:
+      post.currentParticipants ??
+      post.currentParticipantCount ??
+      post.participantCount ??
+      post.participants ??
+      0,
+    maxParticipants:
+      post.maxParticipants ??
+      post.maxParticipantCount ??
+      post.maximumParticipants ??
+      post.capacity ??
+      0,
+  };
+};
 
 const getParticipantCount = (post) => {
   const parsed = Number(post?.currentParticipants);
@@ -68,26 +102,20 @@ const getParticipantCount = (post) => {
 
 const getMaxParticipantCount = (post) => {
   const parsed = Number(post?.maxParticipants);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 };
 
 function MeetupCard({ post, user, onClick, onDelete }) {
-  const getTeamDisplayName = (team) => {
-    const nameMap = {
-      DU: '두산', WO: '키움', SA: '삼성', LO: '롯데',
-      HH: '한화', KIA: 'KIA', KT: 'KT', LG: 'LG', NC: 'NC', SSG: 'SSG',
-    };
-    return nameMap[team] || team;
-  };
-
-  const homeTeam = getTeamDisplayName(post.homeTeamName || '미정');
-  const awayTeam = getTeamDisplayName(post.awayTeamName || '미정');
+  const homeTeam = getNormalizedTeamName(post.homeTeamId, post.homeTeamName);
+  const awayTeam = getNormalizedTeamName(post.awayTeamId, post.awayTeamName);
   const homeColor = TEAM_COLORS[homeTeam] || '#ef4b5f';
   const awayColor = TEAM_COLORS[awayTeam] || '#666';
+
   const currentParticipants = getParticipantCount(post);
   const maxParticipants = getMaxParticipantCount(post);
-  const isFull = currentParticipants >= maxParticipants;
-  const ratio = Math.min(currentParticipants / maxParticipants, 1);
+  const isFull = maxParticipants > 0 && currentParticipants >= maxParticipants;
+  // maxParticipants가 0이면 프로그레스바 0%로 안전하게 처리
+  const ratio = maxParticipants > 0 ? Math.min(currentParticipants / maxParticipants, 1) : 0;
 
   return (
     <div
@@ -119,9 +147,17 @@ function MeetupCard({ post, user, onClick, onDelete }) {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
           <div style={{ flex: 1, height: 4, background: '#f5f5f5', borderRadius: 999, overflow: 'hidden' }}>
-            <div style={{ height: '100%', width: `${ratio * 100}%`, background: isFull ? '#ccc' : homeColor, borderRadius: 999, transition: 'width 0.3s ease' }} />
+            <div style={{
+              height: '100%',
+              width: `${ratio * 100}%`,
+              background: isFull ? '#ccc' : homeColor,
+              borderRadius: 999,
+              transition: 'width 0.3s ease',
+            }} />
           </div>
-          <span style={{ fontSize: 12, color: '#666', fontWeight: 700 }}>👤 {currentParticipants}/{maxParticipants}명</span>
+          <span style={{ fontSize: 12, color: '#666', fontWeight: 700 }}>
+            👤 {currentParticipants}/{maxParticipants > 0 ? maxParticipants : '?'}명
+          </span>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -145,50 +181,31 @@ function MeetupCard({ post, user, onClick, onDelete }) {
   );
 }
 
-// 페이지네이션 컴포넌트
 function Pagination({ currentPage, totalPages, onPageChange }) {
   if (totalPages <= 1) return null;
-
   const pages = Array.from({ length: totalPages }, (_, i) => i);
-
   return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 24 }}>
       <button
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage === 0}
-        style={{
-          padding: '6px 12px', borderRadius: 8, border: '1px solid #ddd',
-          background: '#fff', cursor: currentPage === 0 ? 'not-allowed' : 'pointer',
-          color: currentPage === 0 ? '#ccc' : '#333',
-        }}
+        style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #ddd', background: '#fff', cursor: currentPage === 0 ? 'not-allowed' : 'pointer', color: currentPage === 0 ? '#ccc' : '#333' }}
       >
         이전
       </button>
-
       {pages.map((page) => (
         <button
           key={page}
           onClick={() => onPageChange(page)}
-          style={{
-            padding: '6px 12px', borderRadius: 8, border: '1px solid #ddd',
-            background: currentPage === page ? '#ef4b5f' : '#fff',
-            color: currentPage === page ? '#fff' : '#333',
-            fontWeight: currentPage === page ? 700 : 400,
-            cursor: 'pointer',
-          }}
+          style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #ddd', background: currentPage === page ? '#ef4b5f' : '#fff', color: currentPage === page ? '#fff' : '#333', fontWeight: currentPage === page ? 700 : 400, cursor: 'pointer' }}
         >
           {page + 1}
         </button>
       ))}
-
       <button
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage === totalPages - 1}
-        style={{
-          padding: '6px 12px', borderRadius: 8, border: '1px solid #ddd',
-          background: '#fff', cursor: currentPage === totalPages - 1 ? 'not-allowed' : 'pointer',
-          color: currentPage === totalPages - 1 ? '#ccc' : '#333',
-        }}
+        style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #ddd', background: '#fff', cursor: currentPage === totalPages - 1 ? 'not-allowed' : 'pointer', color: currentPage === totalPages - 1 ? '#ccc' : '#333' }}
       >
         다음
       </button>
@@ -203,12 +220,9 @@ export default function MeetupPage({ onSelectPost, initialOpen }) {
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [isModalOpen, setIsModalOpen] = useState(initialOpen || false);
   const [loading, setLoading] = useState(false);
-
-  // 페이지네이션 상태
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
-
   const [formData, setFormData] = useState({
     title: '',
     content: '',
@@ -245,27 +259,17 @@ export default function MeetupPage({ onSelectPost, initialOpen }) {
 
       if (responseData?.success && responseData?.data?.content) {
         postsArray = responseData.data.content;
-        pageInfo = {
-          totalPages: responseData.data.totalPages ?? 0,
-          totalElements: responseData.data.totalElements ?? 0,
-        };
+        pageInfo = { totalPages: responseData.data.totalPages ?? 0, totalElements: responseData.data.totalElements ?? 0 };
       } else if (responseData?.data?.content) {
         postsArray = responseData.data.content;
-        pageInfo = {
-          totalPages: responseData.data.totalPages ?? 0,
-          totalElements: responseData.data.totalElements ?? 0,
-        };
+        pageInfo = { totalPages: responseData.data.totalPages ?? 0, totalElements: responseData.data.totalElements ?? 0 };
       } else if (responseData?.content) {
         postsArray = responseData.content;
-        pageInfo = {
-          totalPages: responseData.totalPages ?? 0,
-          totalElements: responseData.totalElements ?? 0,
-        };
+        pageInfo = { totalPages: responseData.totalPages ?? 0, totalElements: responseData.totalElements ?? 0 };
       } else if (Array.isArray(responseData?.data)) {
         postsArray = responseData.data;
       }
 
-      // currentParticipants 필드명 정규화
       setPosts(postsArray.map(normalizePost));
       setTotalPages(pageInfo.totalPages);
       setTotalElements(pageInfo.totalElements);
@@ -280,7 +284,6 @@ export default function MeetupPage({ onSelectPost, initialOpen }) {
     }
   }, [filterTeam, filterStatus]);
 
-  // 필터 변경 시 1페이지로 초기화
   useEffect(() => {
     setCurrentPage(0);
     fetchMates(0);
@@ -301,16 +304,27 @@ export default function MeetupPage({ onSelectPost, initialOpen }) {
         (post.homeTeamName || '').includes(filterName) ||
         (post.awayTeamName || '').includes(filterName) ||
         (post.supportTeamName || '').includes(filterName);
-
       if (!isIdMatch && !isNameMatch) return false;
     }
-
-    if (filterStatus === 'FULL' && getParticipantCount(post) < getMaxParticipantCount(post)) {
-      return false;
+    if (filterStatus === 'FULL') {
+      const cur = getParticipantCount(post);
+      const max = getMaxParticipantCount(post);
+      if (max === 0 || cur < max) return false;
     }
-
     return true;
   });
+
+  const handleTeamChange = (type, value) => {
+    if (type === 'home' && value === formData.awayTeamId && value !== '') {
+      alert('홈 팀과 어웨이 팀은 같을 수 없습니다.');
+      return;
+    }
+    if (type === 'away' && value === formData.homeTeamId && value !== '') {
+      alert('홈 팀과 어웨이 팀은 같을 수 없습니다.');
+      return;
+    }
+    setFormData({ ...formData, [type === 'home' ? 'homeTeamId' : 'awayTeamId']: value });
+  };
 
   const handleDelete = async (postId) => {
     if (!window.confirm('정말 삭제하시겠습니까?')) return;
@@ -324,39 +338,35 @@ export default function MeetupPage({ onSelectPost, initialOpen }) {
 
   const resetForm = () => {
     setFormData({
-      title: '',
-      content: '',
-      matchDate: '',
-      homeTeamId: '',
-      awayTeamId: '',
-      supportTeamId: '',
-      maxParticipants: 4,
-      stadium: '',
-      matchTime: '',
+      title: '', content: '', matchDate: '', homeTeamId: '', awayTeamId: '',
+      supportTeamId: '', maxParticipants: 4, stadium: '', matchTime: '',
     });
   };
 
   const handleCreate = async (e) => {
     e.preventDefault();
-
+    if (formData.homeTeamId && formData.homeTeamId === formData.awayTeamId) {
+      alert('홈 팀과 어웨이 팀은 같을 수 없습니다.');
+      return;
+    }
     try {
+      const autoStadium = STADIUMS[formData.homeTeamId] || '경기장 미정';
       const payload = {
         boardType: 'MATE',
         title: formData.title,
         content: formData.content,
         matchDate: formData.matchDate,
+        matchTime: formData.matchTime,
         homeTeamId: String(TEAM_CODE_MAP[formData.homeTeamId] || formData.homeTeamId),
         awayTeamId: String(TEAM_CODE_MAP[formData.awayTeamId] || formData.awayTeamId),
         supportTeamId: String(TEAM_CODE_MAP[formData.supportTeamId] || formData.supportTeamId),
         maxParticipants: Number(formData.maxParticipants),
-        stadium: formData.stadium,
-        matchTime: formData.matchTime,
+        stadium: autoStadium,
       };
-
       await api.post('/posts', payload);
       setIsModalOpen(false);
       resetForm();
-      fetchMates(0); // 등록 후 1페이지로 이동
+      fetchMates(0);
       alert('모집글이 등록되었습니다.');
     } catch (err) {
       console.error('등록 실패:', err);
@@ -378,12 +388,7 @@ export default function MeetupPage({ onSelectPost, initialOpen }) {
             <button
               key={id}
               onClick={() => setFilterStatus(id)}
-              style={{
-                padding: '6px 14px', fontSize: '13px', fontWeight: '500', borderRadius: '18px',
-                cursor: 'pointer', border: filterStatus === id ? 'none' : '1px solid #eee',
-                backgroundColor: filterStatus === id ? '#ef4b5f' : '#fff',
-                color: filterStatus === id ? '#fff' : '#666',
-              }}
+              style={{ padding: '6px 14px', fontSize: '13px', fontWeight: '500', borderRadius: '18px', cursor: 'pointer', border: filterStatus === id ? 'none' : '1px solid #eee', backgroundColor: filterStatus === id ? '#ef4b5f' : '#fff', color: filterStatus === id ? '#fff' : '#666' }}
             >
               {label}
             </button>
@@ -391,7 +396,6 @@ export default function MeetupPage({ onSelectPost, initialOpen }) {
         </div>
       </div>
 
-      {/* 총 게시글 수 */}
       {totalElements > 0 && (
         <div style={{ fontSize: 13, color: '#888', marginBottom: 12 }}>
           총 <strong>{totalElements}</strong>개의 모집글
@@ -405,36 +409,19 @@ export default function MeetupPage({ onSelectPost, initialOpen }) {
           <>
             <div className="card-grid">
               <div
-                onClick={() => {
-                  if (!user) {
-                    alert('로그인 후 이용 가능합니다.');
-                    return;
-                  }
-                  setIsModalOpen(true);
-                }}
-                style={{
-                  cursor: 'pointer', display: 'flex', flexDirection: 'column',
-                  alignItems: 'center', justifyContent: 'center', minHeight: '220px',
-                  borderRadius: '16px', border: '2px dashed #ddd', backgroundColor: '#f9f9f9', transition: 'all 0.2s ease',
-                }}
+                onClick={() => { if (!user) { alert('로그인 후 이용 가능합니다.'); return; } setIsModalOpen(true); }}
+                style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '220px', borderRadius: '16px', border: '2px dashed #ddd', backgroundColor: '#f9f9f9', transition: 'all 0.2s ease' }}
                 onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#ef4b5f'; e.currentTarget.style.backgroundColor = '#fff5f6'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#ddd'; e.currentTarget.style.backgroundColor = '#f9f9f9'; }}
               >
                 <div style={{ fontSize: '40px', color: '#ef4b5f', marginBottom: '8px' }}>+</div>
                 <div style={{ fontSize: '14px', fontWeight: '700', color: '#888' }}>새 모집글 작성</div>
               </div>
-
               {filteredPosts.map((post) => (
                 <MeetupCard key={post.id} post={post} user={user} onClick={onSelectPost} onDelete={handleDelete} />
               ))}
             </div>
-
-            {/* 페이지네이션 */}
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={handlePageChange}
-            />
+            <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
           </>
         )}
       </div>
@@ -444,22 +431,28 @@ export default function MeetupPage({ onSelectPost, initialOpen }) {
           style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
           onClick={() => setIsModalOpen(false)}
         >
-          <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 460, padding: 24 }} onClick={(e) => e.stopPropagation()}>
+          <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 460, padding: 24, maxHeight: '90vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
             <h3 style={{ marginBottom: 20 }}>직관 메이트 모집</h3>
             <form onSubmit={handleCreate}>
               <input placeholder="제목" style={{ width: '100%', marginBottom: 12, borderRadius: 10, padding: 10, border: '1px solid #ddd', boxSizing: 'border-box' }} value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} required />
               <textarea placeholder="내용" style={{ width: '100%', height: 100, marginBottom: 12, borderRadius: 10, padding: 10, border: '1px solid #ddd', boxSizing: 'border-box', resize: 'none' }} value={formData.content} onChange={(e) => setFormData({ ...formData, content: e.target.value })} required />
 
               <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-                <select style={{ flex: 1, padding: 8, borderRadius: 10, border: '1px solid #ddd' }} value={formData.homeTeamId} onChange={(e) => setFormData({ ...formData, homeTeamId: e.target.value })} required>
-                  <option value="">홈팀</option>
+                <select style={{ flex: 1, padding: 8, borderRadius: 10, border: '1px solid #ddd' }} value={formData.homeTeamId} onChange={(e) => handleTeamChange('home', e.target.value)} required>
+                  <option value="">홈 팀</option>
                   {TEAMS.filter((t) => t.id !== 'ALL').map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
-                <select style={{ flex: 1, padding: 8, borderRadius: 10, border: '1px solid #ddd' }} value={formData.awayTeamId} onChange={(e) => setFormData({ ...formData, awayTeamId: e.target.value })} required>
-                  <option value="">원정팀</option>
+                <select style={{ flex: 1, padding: 8, borderRadius: 10, border: '1px solid #ddd' }} value={formData.awayTeamId} onChange={(e) => handleTeamChange('away', e.target.value)} required>
+                  <option value="">어웨이 팀</option>
                   {TEAMS.filter((t) => t.id !== 'ALL').map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
               </div>
+
+              {formData.homeTeamId && (
+                <div style={{ marginBottom: 12, padding: '10px', background: '#f5f5f5', borderRadius: 10, fontSize: 13, color: '#555', textAlign: 'center', border: '1px solid #eee' }}>
+                  예상 경기장: <b>{STADIUMS[formData.homeTeamId] || '미정'}</b>
+                </div>
+              )}
 
               <select style={{ width: '100%', marginBottom: 12, padding: 8, borderRadius: 10, border: '1px solid #ddd', boxSizing: 'border-box' }} value={formData.supportTeamId} onChange={(e) => setFormData({ ...formData, supportTeamId: e.target.value })} required>
                 <option value="">응원 팀</option>
@@ -468,21 +461,14 @@ export default function MeetupPage({ onSelectPost, initialOpen }) {
 
               <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
                 <input type="date" style={{ flex: 1, padding: 8, borderRadius: 10, border: '1px solid #ddd', boxSizing: 'border-box' }} value={formData.matchDate} onChange={(e) => setFormData({ ...formData, matchDate: e.target.value })} required />
-                <input type="time" style={{ flex: 1, padding: 8, borderRadius: 10, border: '1px solid #ddd', boxSizing: 'border-box' }} value={formData.matchTime} onChange={(e) => setFormData({ ...formData, matchTime: e.target.value })} required />
+                <input type="time" style={{ flex: 1, padding: 8, borderRadius: 10, border: '1px solid #ddd', boxSizing: 'border-box' }} value={formData.matchTime} onChange={(e) => setFormData({ ...formData, matchTime: e.target.value })} />
               </div>
-
-              <select style={{ width: '100%', marginBottom: 12, padding: 10, borderRadius: 10, border: '1px solid #ddd', boxSizing: 'border-box' }} value={formData.stadium} onChange={(e) => setFormData({ ...formData, stadium: e.target.value })} required>
-                <option value="">경기장 선택</option>
-                {STADIUM_OPTIONS.map((stadium) => (
-                  <option key={stadium} value={stadium}>{stadium}</option>
-                ))}
-              </select>
 
               <input type="number" min="2" max="99" placeholder="최대 인원" style={{ width: '100%', marginBottom: 20, borderRadius: 10, padding: 10, border: '1px solid #ddd', boxSizing: 'border-box' }} value={formData.maxParticipants} onChange={(e) => setFormData({ ...formData, maxParticipants: e.target.value })} required />
 
               <div style={{ display: 'flex', gap: 10 }}>
                 <button type="submit" style={{ flex: 1, padding: 12, background: '#ef4b5f', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, cursor: 'pointer' }}>등록</button>
-                <button type="button" onClick={() => setIsModalOpen(false)} style={{ flex: 1, padding: 12, background: '#eee', border: 'none', borderRadius: 10, cursor: 'pointer' }}>취소</button>
+                <button type="button" onClick={() => { setIsModalOpen(false); resetForm(); }} style={{ flex: 1, padding: 12, background: '#eee', border: 'none', borderRadius: 10, cursor: 'pointer' }}>취소</button>
               </div>
             </form>
           </div>
