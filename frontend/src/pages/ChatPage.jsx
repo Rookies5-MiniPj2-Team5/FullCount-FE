@@ -161,7 +161,7 @@ export default function ChatPage({
 
   useEffect(() => {
     if (!roomId) return;
-    api.get(`/chat/${roomId}`)
+    api.get(`/chat/rooms/${roomId}`)
       .then(res => {
         const data = res.data.data || res.data;
         setParticipants(data?.participants || []);
