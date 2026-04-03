@@ -24,7 +24,6 @@ export function subscribeToRoom(client, roomId) {
 
 /**
  * 메시지 발행 (전송)
- * 중복 선언된 함수를 하나로 통합하고 주석을 유지했습니다.
  */
 export function sendMessage(client, roomId, payload) {
   // TODO: BE 연동 시 아래 주석 해제
@@ -40,7 +39,7 @@ export function sendMessage(client, roomId, payload) {
 }
 
 // ─────────────────────────────────────────────────────
-// [REST API] 채팅방 생성 · 과거 메시지 조회
+// [REST API] 채팅방 (목록 · 상세 · 생성 · 내역)
 // ─────────────────────────────────────────────────────
 
 /**
@@ -52,10 +51,45 @@ const authHeader = () => ({
 });
 
 /**
+ * 내 채팅방 목록 조회 (페이징)
+ * @summary GET /api/chat/rooms
+ * @param {number} page
+ * @param {number} size
+ */
+export const fetchMyChatRooms = (page = 0, size = 10) =>
+  api.get('/chat/rooms', {
+    params: {
+      page,
+      size,
+      sort: 'createdAt,desc',
+    },
+  });
+
+/**
+ * 채팅방 상세 조회
+ * @summary GET /api/chat/rooms/{roomId}
+ * @param {number} roomId
+ */
+export const fetchChatRoomDetail = (roomId) =>
+  api.get(`/chat/rooms/${roomId}`);
+
+/**
+ * 직관 모임(메이트/크루) 그룹 채팅방 참여/생성
+ * @summary POST /api/chat/rooms?postId={postId}&type=GROUP_JOIN
+ */
+export const createOrGetMeetupGroupJoinRoom = (postId) =>
+  api.post('/chat/rooms', null, {
+    params: {
+      postId,
+      type: 'GROUP_JOIN',
+    },
+  });
+
+/**
  * 크루 1:1 문의 채팅방 생성 or 조회
  * @param {number} crewId
  * @returns {Promise<{ id: number }>} chatRoomDTO
- * * TODO: BE 연동 - POST /api/chat/dm/crew/{crewId}
+ * TODO: BE 연동 - POST /api/chat/dm/crew/{crewId}
  */
 export async function createOrGetCrewDmRoom(crewId) {
   console.warn('[chat.js] createOrGetCrewDmRoom: mock mode', { crewId });
@@ -78,14 +112,3 @@ export async function fetchChatHistory(roomId, page = 0) {
   console.warn('[chat.js] fetchChatHistory: mock mode', { roomId, page });
   return [];
 }
-
-/**
- * 직관 모임(메이트/크루) 그룹 채팅방 참여/생성
- */
-export const createOrGetMeetupGroupJoinRoom = (postId) =>
-  api.post('/chat/rooms', null, {
-    params: {
-      postId,
-      type: 'GROUP_JOIN',
-    },
-  });

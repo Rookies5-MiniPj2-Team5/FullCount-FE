@@ -2,15 +2,21 @@ import { useEffect, useState } from 'react';
 import ApplyModal from '../components/ApplyModal';
 import { StatusBadge } from '../components/StatusBadge';
 import { TeamBadge } from '../components/TeamComponents';
-import { createOrGetMeetupGroupJoinRoom } from '../api/chat';
+import { createOrGetMeetupGroupJoinRoom, fetchChatRoomDetail } from '../api/chat';
 import { applyMeetupMate, getMeetupMateMembers, getMeetupPost } from '../api/meetup';
 import { useAuth } from '../context/AuthContext';
-import api from '../api/api';
 
 const AUTHOR_TEAM_MAP = {
-  'LG 트윈스': 'LG', '두산 베어스': 'DU', 'SSG 랜더스': 'SSG',
-  'KIA 타이거즈': 'KIA', '삼성 라이온즈': 'SA', '롯데 자이언츠': 'LO',
-  '한화 이글스': 'HH', 'KT 위즈': 'KT', 'NC 다이노스': 'NC', '키움 히어로즈': 'WO',
+  'LG 트윈스': 'LG',
+  '두산 베어스': 'DU',
+  'SSG 랜더스': 'SSG',
+  'KIA 타이거즈': 'KIA',
+  '삼성 라이온즈': 'SA',
+  '롯데 자이언츠': 'LO',
+  '한화 이글스': 'HH',
+  'KT 위즈': 'KT',
+  'NC 다이노스': 'NC',
+  '키움 히어로즈': 'WO',
 };
 
 const unwrapResponseData = (responseData) => {
@@ -20,64 +26,73 @@ const unwrapResponseData = (responseData) => {
   return responseData;
 };
 
-const getAuthorTeamCode = (authorTeam) => {
-  if (!authorTeam) return 'LG';
-  if (AUTHOR_TEAM_MAP[authorTeam]) return AUTHOR_TEAM_MAP[authorTeam];
-  const matchedEntry = Object.entries(AUTHOR_TEAM_MAP).find(([teamName]) =>
-    authorTeam.includes(teamName.split(' ')[0]),
-  );
-  return matchedEntry?.[1] || 'LG';
-};
-
-// currentParticipants, maxParticipants 응답 필드명 정규화
 const normalizePost = (post) => {
   if (!post) return post;
+
   return {
     ...post,
-    currentParticipants:
-      post.currentParticipants ??
-      post.currentParticipantCount ??
-      post.participantCount ??
-      post.participants ??
-      0,
-    maxParticipants:
-      post.maxParticipants ??
-      post.maxParticipantCount ??
-      post.maximumParticipants ??
-      post.capacity ??
-      0,
+    currentParticipants: Number(post.currentParticipants) || 0,
+    maxParticipants: Number(post.maxParticipants) || 0,
   };
 };
 
-const getParticipantCount = (post) => {
-  const parsed = Number(post?.currentParticipants);
-  return Number.isFinite(parsed) ? parsed : 0;
-};
+const extractChatRoomId = (room) =>
+  room?.chatRoomId ?? room?.roomId ?? room?.id ?? null;
 
-const getMaxParticipantCount = (post) => {
-  const parsed = Number(post?.maxParticipants);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+const getAuthorTeamCode = (authorTeam) => {
+  if (!authorTeam) return 'LG';
+  if (AUTHOR_TEAM_MAP[authorTeam]) return AUTHOR_TEAM_MAP[authorTeam];
+
+  const matchedEntry = Object.entries(AUTHOR_TEAM_MAP).find(([teamName]) =>
+    authorTeam.includes(teamName.split(' ')[0]),
+  );
+
+  return matchedEntry?.[1] || 'LG';
 };
 
 function MemberCard({ member }) {
   const avatarLabel = member.nickname?.substring(0, 1) || '?';
+
   return (
     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 0', borderBottom: '1px solid #f5f5f5' }}>
-      <div style={{ width: 38, height: 38, borderRadius: '50%', background: '#1a2a4a', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 15, flexShrink: 0, overflow: 'hidden' }}>
-        {member.profileImage
-          ? <img src={member.profileImage} alt={member.nickname} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          : avatarLabel}
+      <div
+        style={{
+          width: 38,
+          height: 38,
+          borderRadius: '50%',
+          background: '#1a2a4a',
+          color: '#fff',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontWeight: 700,
+          fontSize: 15,
+          flexShrink: 0,
+          overflow: 'hidden',
+        }}
+      >
+        {member.profileImage ? (
+          <img src={member.profileImage} alt={member.nickname} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        ) : (
+          avatarLabel
+        )}
       </div>
+
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: '#1a2a4a' }}>{member.nickname}</div>
           {member.isLeader && (
-            <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: '#fff0f3', color: '#e94560' }}>작성자</span>
+            <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: '#fff0f3', color: '#e94560' }}>
+              작성자
+            </span>
           )}
           {typeof member.mannerTemperature === 'number' && (
-            <span style={{ fontSize: 12, color: '#777' }}>매너온도 {member.mannerTemperature.toFixed(1)}</span>
+            <span style={{ fontSize: 12, color: '#777' }}>
+              매너온도 {member.mannerTemperature.toFixed(1)}
+            </span>
           )}
         </div>
+
         {member.applyMessage && (
           <div style={{ fontSize: 12, color: '#666', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'keep-all' }}>
             {member.applyMessage}
@@ -101,17 +116,19 @@ export default function MeetupDetailPage({ postId, onBack, onOpenChat }) {
   const [chatRoomLoading, setChatRoomLoading] = useState(false);
 
   const isAuthor = user?.nickname === post?.authorNickname;
-  const currentParticipants = getParticipantCount(post);
-  const maxParticipants = getMaxParticipantCount(post);
+  const currentParticipants = post?.currentParticipants || 0;
+  const maxParticipants = post?.maxParticipants || 0;
   const isFull = maxParticipants > 0 && currentParticipants >= maxParticipants;
   const authorTeamCode = getAuthorTeamCode(post?.authorTeam);
-  const myMemberInfo = members.find((m) => m.nickname === user?.nickname) || null;
-  const isParticipant = !!myMemberInfo;
+  const myMemberInfo = members.find((member) => member.nickname === user?.nickname) || null;
+  const progressRatio = maxParticipants > 0 ? Math.min(currentParticipants / maxParticipants, 1) : 0;
 
-  const canAccessChatRoom = !!groupChatRoomId && (isAuthor || isParticipant);
-  const canCreateChatRoom = !groupChatRoomId && isAuthor && isFull;
-  const isChatButtonActive = canAccessChatRoom || canCreateChatRoom;
-  const chatButtonLabel = chatRoomLoading ? '처리 중...' : groupChatRoomId ? '그룹 채팅방 입장' : '채팅방 생성';
+  const chatButtonVisible = isFull;
+  const chatButtonLabel = chatRoomLoading
+    ? '처리 중...'
+    : groupChatRoomId
+      ? '그룹 채팅방 입장'
+      : '그룹 채팅방 생성';
 
   const fetchPost = async () => {
     try {
@@ -119,7 +136,9 @@ export default function MeetupDetailPage({ postId, onBack, onOpenChat }) {
       const res = await getMeetupPost(postId);
       const data = normalizePost(unwrapResponseData(res.data));
       setPost(data);
-      if (data?.chatRoomId) setGroupChatRoomId(data.chatRoomId);
+      if (data?.chatRoomId) {
+        setGroupChatRoomId(data.chatRoomId);
+      }
     } catch (error) {
       console.error('게시글 상세 조회 실패:', error);
       alert('게시글을 불러오지 못했습니다.');
@@ -171,7 +190,11 @@ export default function MeetupDetailPage({ postId, onBack, onOpenChat }) {
   };
 
   const handleOpenDm = () => {
-    if (!user) { alert('로그인이 필요합니다.'); return; }
+    if (!user) {
+      alert('로그인이 필요합니다.');
+      return;
+    }
+
     if (onOpenChat && post?.authorNickname) {
       onOpenChat({
         id: `dm-${[user.nickname, post.authorNickname].sort().join('-')}`,
@@ -186,31 +209,39 @@ export default function MeetupDetailPage({ postId, onBack, onOpenChat }) {
     }
   };
 
+  const openGroupChat = (roomId, detailData) => {
+    onOpenChat?.({
+      id: roomId,
+      postId,
+      roomType: detailData?.roomType || detailData?.chatRoomType || 'GROUP_JOIN',
+      title: detailData?.title || post?.title,
+      crewTeam: post?.authorTeam,
+      participants: detailData?.participants || [],
+    });
+  };
+
   const handleChatRoomButton = async () => {
-    if (!isChatButtonActive) return;
-    if (groupChatRoomId) {
-      try {
-        setChatRoomLoading(true);
-        await api.get(`/chat/rooms/${groupChatRoomId}`);
-        alert(`채팅방(${groupChatRoomId})에 입장합니다.`);
-      } catch (error) {
-        console.error('채팅방 조회 실패:', error);
-        alert('채팅방을 불러오지 못했습니다.');
-      } finally {
-        setChatRoomLoading(false);
-      }
-      return;
-    }
+    if (!chatButtonVisible || chatRoomLoading) return;
+
     try {
       setChatRoomLoading(true);
-      const res = await createOrGetMeetupGroupJoinRoom(postId);
-      const roomData = unwrapResponseData(res?.data);
-      const createdRoomId = roomData?.id ?? roomData?.chatRoomId ?? roomData?.roomId;
-      if (createdRoomId) setGroupChatRoomId(createdRoomId);
-      alert('그룹 채팅방이 생성되었습니다.');
+
+      const createRes = await createOrGetMeetupGroupJoinRoom(postId);
+      const roomData = unwrapResponseData(createRes?.data);
+      const targetRoomId = extractChatRoomId(roomData);
+
+      if (!targetRoomId) {
+        throw new Error('채팅방 ID가 없습니다.');
+      }
+
+      const detailRes = await fetchChatRoomDetail(targetRoomId);
+      const detailData = unwrapResponseData(detailRes.data);
+
+      setGroupChatRoomId(targetRoomId);
+      openGroupChat(targetRoomId, detailData);
     } catch (error) {
-      console.error('그룹 채팅방 생성 실패:', error);
-      alert('그룹 채팅방 생성에 실패했습니다.');
+      console.error('그룹 채팅방 처리 실패:', error);
+      alert(error?.response?.data?.message || '채팅방 처리에 실패했습니다.');
     } finally {
       setChatRoomLoading(false);
     }
@@ -219,7 +250,7 @@ export default function MeetupDetailPage({ postId, onBack, onOpenChat }) {
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', flexDirection: 'column', gap: 12 }}>
-        <div style={{ fontSize: 32 }}>⚾</div>
+        <div style={{ fontSize: 32 }}>⏳</div>
         <p style={{ color: '#999', fontSize: 14 }}>로딩 중...</p>
       </div>
     );
@@ -228,8 +259,6 @@ export default function MeetupDetailPage({ postId, onBack, onOpenChat }) {
   if (!post) return null;
 
   const applyTabLabel = isAuthor ? `신청 목록 (${members.length})` : '내 신청 현황';
-  // 프로그레스바 비율 — maxParticipants가 0이면 0%로 안전 처리
-  const progressRatio = maxParticipants > 0 ? Math.min(currentParticipants / maxParticipants, 1) : 0;
 
   return (
     <div>
@@ -239,7 +268,6 @@ export default function MeetupDetailPage({ postId, onBack, onOpenChat }) {
       </div>
 
       <div className="page-content" style={{ paddingBottom: 120 }}>
-        {/* 헤더 배너 */}
         <div style={{ background: 'linear-gradient(135deg, #1a2a4a 0%, #e94560 100%)', borderRadius: 16, padding: '24px 20px', color: '#fff', marginBottom: 16, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
             <span style={{ background: 'rgba(255,255,255,0.2)', color: '#fff', padding: '4px 14px', borderRadius: 20, fontSize: 13, fontWeight: 700 }}>{post.homeTeamName}</span>
@@ -250,11 +278,10 @@ export default function MeetupDetailPage({ postId, onBack, onOpenChat }) {
           <div style={{ display: 'flex', justifyContent: 'center', gap: 14, fontSize: 13, opacity: 0.9, flexWrap: 'wrap' }}>
             <span>📍 {post.stadium || '경기장 미정'}</span>
             <span>📅 {post.matchDate}</span>
-            {post.matchTime && <span>🕖 {post.matchTime}</span>}
+            {post.matchTime && <span>⏰ {post.matchTime}</span>}
           </div>
         </div>
 
-        {/* 인원/상태 카드 */}
         <div style={{ background: '#fff', borderRadius: 12, padding: 16, marginBottom: 12, border: '1px solid #eee' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
             <StatusBadge status={post.status} />
@@ -263,13 +290,15 @@ export default function MeetupDetailPage({ postId, onBack, onOpenChat }) {
             </span>
           </div>
           <div style={{ height: 8, background: '#f0f0f0', borderRadius: 999, overflow: 'hidden', marginBottom: 10 }}>
-            <div style={{
-              height: '100%',
-              width: `${progressRatio * 100}%`,
-              background: isFull ? '#ef4444' : '#e94560',
-              borderRadius: 999,
-              transition: 'width 0.4s ease',
-            }} />
+            <div
+              style={{
+                height: '100%',
+                width: `${progressRatio * 100}%`,
+                background: isFull ? '#ef4444' : '#e94560',
+                borderRadius: 999,
+                transition: 'width 0.4s ease',
+              }}
+            />
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#999' }}>
             <span>조회수 {post.viewCount ?? 0}</span>
@@ -277,7 +306,6 @@ export default function MeetupDetailPage({ postId, onBack, onOpenChat }) {
           </div>
         </div>
 
-        {/* 탭 */}
         <div style={{ display: 'flex', background: '#fff', borderRadius: 12, border: '1px solid #eee', marginBottom: 12, overflow: 'hidden' }}>
           {[{ key: 'info', label: '모집 정보' }, { key: 'apply', label: applyTabLabel }].map(({ key, label }) => (
             <button
@@ -290,7 +318,6 @@ export default function MeetupDetailPage({ postId, onBack, onOpenChat }) {
           ))}
         </div>
 
-        {/* 모집 정보 탭 */}
         {tab === 'info' && (
           <>
             <div style={{ background: '#fff', borderRadius: 12, padding: 16, marginBottom: 12, border: '1px solid #eee' }}>
@@ -323,9 +350,11 @@ export default function MeetupDetailPage({ postId, onBack, onOpenChat }) {
                   onClick={handleOpenDm}
                   style={{ width: 44, height: 44, borderRadius: '50%', background: 'linear-gradient(135deg, #1a2a4a, #e94560)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 18, flexShrink: 0, boxShadow: '0 0 0 3px #e9456040', overflow: 'hidden', cursor: 'pointer' }}
                 >
-                  {post.profileImage
-                    ? <img src={post.profileImage} alt={post.authorNickname} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    : post.authorNickname?.substring(0, 1)}
+                  {post.profileImage ? (
+                    <img src={post.profileImage} alt={post.authorNickname} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    post.authorNickname?.substring(0, 1)
+                  )}
                 </div>
                 <div style={{ flex: 1, cursor: 'pointer' }} onClick={handleOpenDm}>
                   <div style={{ fontSize: 15, fontWeight: 700, color: '#1a2a4a', marginBottom: 4 }}>{post.authorNickname}</div>
@@ -338,7 +367,7 @@ export default function MeetupDetailPage({ postId, onBack, onOpenChat }) {
                 </div>
                 {!isAuthor && (
                   <button onClick={handleOpenDm} style={{ padding: '8px 14px', borderRadius: 10, background: '#f5f5f5', border: '1px solid #eee', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-                    💬 1:1 문의
+                    1:1 문의
                   </button>
                 )}
               </div>
@@ -346,23 +375,22 @@ export default function MeetupDetailPage({ postId, onBack, onOpenChat }) {
           </>
         )}
 
-        {/* 신청 현황 탭 */}
         {tab === 'apply' && (
           <>
-            {(isAuthor || canAccessChatRoom) && (
+            {chatButtonVisible && (
               <div style={{ background: '#fff', borderRadius: 12, padding: 16, marginBottom: 12, border: '1px solid #eee' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                   <div>
                     <div style={{ fontSize: 15, fontWeight: 700, color: '#1a2a4a', marginBottom: 4 }}>그룹 채팅방</div>
                     <div style={{ fontSize: 12, color: '#888' }}>
-                      {groupChatRoomId ? '채팅방이 개설되었습니다. 입장할 수 있습니다.' : '참여 인원이 모두 찼을 때 작성자가 채팅방을 생성할 수 있습니다.'}
+                      모집 인원이 모두 차면 채팅방에 입장할 수 있습니다.
                     </div>
                   </div>
                   <button
                     type="button"
                     onClick={handleChatRoomButton}
-                    disabled={!isChatButtonActive || chatRoomLoading}
-                    style={{ padding: '10px 14px', background: isChatButtonActive ? '#e94560' : '#ccc', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, cursor: isChatButtonActive && !chatRoomLoading ? 'pointer' : 'not-allowed', opacity: isChatButtonActive && !chatRoomLoading ? 1 : 0.8, whiteSpace: 'nowrap', minWidth: 90 }}
+                    disabled={!isFull || chatRoomLoading}
+                    style={{ padding: '10px 14px', background: isFull && !chatRoomLoading ? '#e94560' : '#ccc', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, cursor: isFull && !chatRoomLoading ? 'pointer' : 'not-allowed', opacity: isFull && !chatRoomLoading ? 1 : 0.8, whiteSpace: 'nowrap', minWidth: 120 }}
                   >
                     {chatButtonLabel}
                   </button>
@@ -407,7 +435,7 @@ export default function MeetupDetailPage({ postId, onBack, onOpenChat }) {
               <div style={{ background: '#fff', borderRadius: 12, padding: '40px 16px', border: '1px solid #eee', textAlign: 'center' }}>
                 <div style={{ fontSize: 32, marginBottom: 12 }}>📝</div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: '#1a2a4a', marginBottom: 6 }}>아직 신청하지 않았어요</div>
-                <div style={{ fontSize: 13, color: '#999' }}>하단의 신청하기 버튼을 눌러 메이트 신청을 진행해보세요.</div>
+                <div style={{ fontSize: 13, color: '#999' }}>하단의 신청 버튼을 눌러 메이트 신청을 진행해보세요.</div>
               </div>
             )}
           </>
@@ -417,7 +445,13 @@ export default function MeetupDetailPage({ postId, onBack, onOpenChat }) {
       {!isAuthor && post.status !== 'CLOSED' && (
         <div style={{ position: 'fixed', bottom: 80, left: '50%', transform: 'translateX(-50%)', padding: '8px 16px', background: '#fff', borderRadius: '20px', border: '1px solid #eee', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 100, display: 'flex', justifyContent: 'center', alignItems: 'center', width: 'fit-content' }}>
           <button
-            onClick={() => { if (!user) { alert('로그인 후 이용 가능합니다.'); return; } setIsApplyModalOpen(true); }}
+            onClick={() => {
+              if (!user) {
+                alert('로그인 후 이용 가능합니다.');
+                return;
+              }
+              setIsApplyModalOpen(true);
+            }}
             style={{ padding: '12px 32px', background: '#e94560', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 700, fontSize: 16, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
           >
             직관 메이트 신청하기
@@ -428,7 +462,7 @@ export default function MeetupDetailPage({ postId, onBack, onOpenChat }) {
       {post.status === 'CLOSED' && (
         <div style={{ position: 'fixed', bottom: 80, left: '50%', transform: 'translateX(-50%)', padding: '8px 16px', background: '#fff', borderRadius: '20px', border: '1px solid #eee', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 100 }}>
           <div style={{ padding: '12px 32px', background: '#f5f5f5', color: '#aaa', borderRadius: '12px', fontWeight: 700, fontSize: 15, textAlign: 'center', whiteSpace: 'nowrap' }}>
-            모집이 마감되었습니다
+            모집이 마감되었습니다.
           </div>
         </div>
       )}
