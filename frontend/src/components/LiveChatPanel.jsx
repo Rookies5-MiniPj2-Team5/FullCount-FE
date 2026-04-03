@@ -283,11 +283,11 @@ export default function LiveChatPanel({ gameId, homeTeam, awayTeam, onClose }) {
             key={r.id}
             id={`live-reaction-${r.id}`}
             onClick={() => handleReaction(r.id)}
-            disabled={!connected}
+            disabled={!connected || !user}
             style={{
               ...styles.reactionBtn,
-              opacity: connected ? 1 : 0.4,
-              cursor: connected ? 'pointer' : 'not-allowed',
+              opacity: (connected && user) ? 1 : 0.4,
+              cursor: (connected && user) ? 'pointer' : 'not-allowed',
             }}
             title={r.label}
           >
@@ -299,27 +299,38 @@ export default function LiveChatPanel({ gameId, homeTeam, awayTeam, onClose }) {
 
       {/* ── 입력창 ── */}
       <div style={styles.inputArea}>
-        <input
-          id="live-chat-input"
-          style={styles.input}
-          placeholder={connected ? '응원 메시지 입력... (Enter)' : '연결 중...'}
-          value={inputText}
-          onChange={(e) => setInputText(e.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={!connected}
-        />
-        <button
-          id="live-chat-send"
-          onClick={handleSend}
-          disabled={!connected || !inputText.trim()}
-          style={{
-            ...styles.sendBtn,
-            background: (connected && inputText.trim()) ? teamColor : '#4a5568',
-            cursor: (connected && inputText.trim()) ? 'pointer' : 'not-allowed',
-          }}
-        >
-          ➤
-        </button>
+        {!user ? (
+          <div style={{
+            flex: 1, textAlign: 'center', color: '#a0aec0', fontSize: 13,
+            padding: '8px 0', background: 'rgba(255,255,255,0.06)', borderRadius: 20
+          }}>
+            로그인한 회원만 채팅에 참여할 수 있습니다.
+          </div>
+        ) : (
+          <>
+            <input
+              id="live-chat-input"
+              style={styles.input}
+              placeholder={connected ? '응원 메시지 입력... (Enter)' : '연결 중...'}
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              onKeyDown={handleKeyDown}
+              disabled={!connected}
+            />
+            <button
+              id="live-chat-send"
+              onClick={handleSend}
+              disabled={!connected || !inputText.trim()}
+              style={{
+                ...styles.sendBtn,
+                background: (connected && inputText.trim()) ? teamColor : '#4a5568',
+                cursor: (connected && inputText.trim()) ? 'pointer' : 'not-allowed',
+              }}
+            >
+              ➤
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

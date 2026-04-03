@@ -195,7 +195,13 @@ export default function CrewPage({ currentUser }) {
               <div className="card-grid">
                 {/* 새 크루 만들기 카드 */}
                 <div
-                  onClick={() => setIsCreateModalOpen(true)}
+                  onClick={() => {
+                    if (!currentUser) {
+                      alert('로그인 후 이용 가능합니다.');
+                      return;
+                    }
+                    setIsCreateModalOpen(true);
+                  }}
                   style={{ cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "220px", borderRadius: '16px', border: '2px dashed #ddd', backgroundColor: '#f9f9f9', transition: 'all 0.2s ease' }}
                   onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#ef4b5f'; e.currentTarget.style.backgroundColor = '#fff5f6'; }}
                   onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#ddd'; e.currentTarget.style.backgroundColor = '#f9f9f9'; }}
