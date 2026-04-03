@@ -109,7 +109,7 @@ export default function ChatFab({ currentUser, onOpenChat }) {
     onOpenChat?.({
       id: room.chatRoomId,
       title: room.title,
-      roomType: room.Type,
+      roomType: room.type,
     });
   };
 

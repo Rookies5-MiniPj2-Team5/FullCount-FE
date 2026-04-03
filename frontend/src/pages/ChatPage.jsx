@@ -58,7 +58,7 @@ export default function ChatPage({
 
       if (isDm && !currentRid) {
         try {
-          const res = await api.post(`/api/chat/dm/crew/${crew.id}`);
+          const res = await api.post(`/chat/rooms/dm/crew/${crew.id}`);
           currentRid = res.data.id;
           setRoomId(currentRid);
         } catch (err) {
