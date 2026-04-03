@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { TeamBadge, TeamFilter } from './TeamComponents'
 import MatchDetailModal from './MatchDetailModal'
+import LiveChatPanel from './LiveChatPanel'
 import api from '../api/api'
 
 const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토']
@@ -233,6 +234,7 @@ export default function ScheduleList({ year = new Date().getFullYear() }) {
   const [selectedDate, setSelectedDate] = useState(null)
   const [selectedGame, setSelectedGame] = useState(null) // 모달 대상 경기
   const [dailyLiveData, setDailyLiveData] = useState([]) // 해당 날짜 실시간 정보
+  const [activeChatGame, setActiveChatGame] = useState(null) // 실시간 채팅 대상 경기
 
   // ── 데이터 로드 ─────────────────────────────────────
   const loadGames = useCallback(async () => {
@@ -528,6 +530,17 @@ export default function ScheduleList({ year = new Date().getFullYear() }) {
         <MatchDetailModal
           game={selectedGame}
           onClose={() => setSelectedGame(null)}
+          onJoinChat={(game) => setActiveChatGame(game)}
+        />
+      )}
+
+      {/* 실시간 응원 채팅 패널 (스케줄 페이지 오버레이) */}
+      {activeChatGame && (
+        <LiveChatPanel
+          gameId={`${activeChatGame.gameDate}_${activeChatGame.homeTeam}_${activeChatGame.awayTeam}`}
+          homeTeam={activeChatGame.homeTeam}
+          awayTeam={activeChatGame.awayTeam}
+          onClose={() => setActiveChatGame(null)}
         />
       )}
     </div>
