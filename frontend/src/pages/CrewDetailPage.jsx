@@ -76,7 +76,9 @@ export default function CrewDetailPage({
   onBack,
   onOpenDmChat,
 }) {
-  const currentUserId = currentUser?.nickname; // 닉네임으로 비교하도록 수정
+  if (!crew) return null;
+
+  const currentUserId = currentUser?.nickname; 
   const [tab, setTab] = useState("info");
   const [members, setMembers] = useState([]); // 실제 멤버 상태
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
@@ -84,9 +86,9 @@ export default function CrewDetailPage({
   const [loadingMembers, setLoadingMembers] = useState(false);
 
   // 설계서상 teamName 매칭을 위한 팀 키 추출
-  const teamKey = crew?.supportTeamName?.split(' ')[0] || crew?.team?.split(' ')[0];
+  const teamKey = crew.supportTeamName?.split(' ')[0] || crew.team?.split(' ')[0];
   const teamColor = TEAM_COLORS[teamKey] || "#e94560";
-  const isFull = crew?.currentParticipants >= crew?.maxParticipants;
+  const isFull = crew.currentParticipants >= crew.maxParticipants;
 
   // 1. 멤버 목록 조회 (설계서 4.2.7)
   const fetchMembers = async () => {
@@ -106,7 +108,7 @@ export default function CrewDetailPage({
   }, [crew?.id]);
 
   // 현재 유저가 멤버인지 확인
-  const isUserMember = members.some(m => m.nickname === crew.authorNickname || m.nickname === currentUserId);
+  const isUserMember = members.some(m => m.nickname === crew?.authorNickname || m.nickname === currentUserId);
 
   // 2. 참여 신청 (설계서 4.2.6)
   const handleApply = async (message) => {
@@ -120,8 +122,6 @@ export default function CrewDetailPage({
       alert(err.response?.data?.message || "신청에 실패했습니다. 이미 참여 중이거나 정원이 찼을 수 있습니다.");
     }
   };
-
-  if (!crew) return null;
 
   return (
     <div>
