@@ -87,7 +87,7 @@ export default function ChatFab({ currentUser, onOpenChat, refreshToggle }) {
   // 컴포넌트 마운트 시 + 30초마다 갱신 + 알림 수신 시 즉시 갱신
   useEffect(() => {
     loadRooms();
-    const interval = setInterval(loadRooms, 30000);
+    const interval = setInterval(loadRooms, 5000);
     return () => clearInterval(interval);
   }, [refreshToggle]);
 
@@ -142,7 +142,7 @@ export default function ChatFab({ currentUser, onOpenChat, refreshToggle }) {
               rooms
                 .sort((a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt))
                 .map((room) => (
-                  <RoomItem key={room.id} room={room} onClick={handleRoomClick} />
+                  <RoomItem key={room.chatRoomId} room={room} onClick={handleRoomClick} />
                 ))
             )}
           </div>
