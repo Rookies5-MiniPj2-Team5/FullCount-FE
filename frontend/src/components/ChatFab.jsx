@@ -87,7 +87,7 @@ export default function ChatFab({ currentUser, onOpenChat }) {
   // 컴포넌트 마운트 시 + 30초마다 갱신
   useEffect(() => {
     loadRooms();
-    const interval = setInterval(loadRooms, 30000);
+    const interval = setInterval(loadRooms, 5000);
     return () => clearInterval(interval);
   }, []);
 

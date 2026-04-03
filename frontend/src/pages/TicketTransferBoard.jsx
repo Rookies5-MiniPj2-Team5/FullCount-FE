@@ -90,11 +90,9 @@ function TicketCard({ ticket, onOpenDetail }) {
       tabIndex={isSold ? -1 : 0}
       onKeyDown={(e) => e.key === 'Enter' && !isSold && onOpenDetail(ticket)}
     >
-      {/* 팀 컬러 상단 악센트 */}
       <div className="ticket-card__accent" style={{ background: `linear-gradient(135deg, ${homeColor}, ${homeColor}cc)` }} />
 
       <div className="ticket-card__body">
-        {/* 헤더: 날짜 + 상태 */}
         <div className="ticket-card__header">
           <span className="ticket-card__date">
             📅 {ticket.matchDate} · {ticket.matchTime}
@@ -102,7 +100,6 @@ function TicketCard({ ticket, onOpenDetail }) {
           <TicketStatusBadge status={ticket.status} />
         </div>
 
-        {/* 매치 정보 */}
         <div className="ticket-card__match">
           <div className="ticket-card__team-badge" style={{ background: homeColor + '18', color: homeColor, borderColor: homeColor + '35' }}>
             {ticket.homeTeam}
@@ -113,7 +110,6 @@ function TicketCard({ ticket, onOpenDetail }) {
           </div>
         </div>
 
-        {/* 좌석 & 경기장 정보 */}
         <div className="ticket-card__info">
           <div className="ticket-card__info-row">
             <span className="ticket-card__info-icon">🏟️</span>
@@ -125,7 +121,6 @@ function TicketCard({ ticket, onOpenDetail }) {
           </div>
         </div>
 
-        {/* 가격 & 작성자 */}
         <div className="ticket-card__footer">
           <div className="ticket-card__price">
             ₩{Number(ticket.price || 0).toLocaleString()}
@@ -163,19 +158,16 @@ function TicketDetailModal({ ticket, onClose, onContact, currentUser }) {
   return (
     <div className="ticket-modal-overlay" ref={overlayRef} onClick={handleOverlayClick}>
       <div className="ticket-modal ticket-detail-modal" role="dialog" aria-modal="true">
-        {/* 팀 컬러 상단 배너 */}
         <div className="ticket-detail__banner" style={{ background: `linear-gradient(135deg, ${homeColor} 0%, ${homeColor}99 100%)` }}>
           <div className="ticket-detail__banner-teams">
             <span className="ticket-detail__banner-team">{ticket.homeTeam}</span>
             <span className="ticket-detail__banner-vs">VS</span>
-            <span className="ticket-detail__banner-team" style={{ color: awayColor === '#666' ? '#fff' : '#fff' }}>{ticket.awayTeam}</span>
+            <span className="ticket-detail__banner-team">{ticket.awayTeam}</span>
           </div>
           <button className="ticket-modal__close ticket-detail__close" onClick={onClose} aria-label="닫기">✕</button>
         </div>
 
-        {/* 상세 내용 */}
         <div className="ticket-detail__body">
-          {/* 상태 + 날짜 */}
           <div className="ticket-detail__row ticket-detail__row--between">
             <span
               className="ticket-status-badge"
@@ -186,7 +178,6 @@ function TicketDetailModal({ ticket, onClose, onContact, currentUser }) {
             <span className="ticket-detail__date">📅 {ticket.matchDate} {ticket.matchTime}</span>
           </div>
 
-          {/* 정보 그리드 */}
           <div className="ticket-detail__info-grid">
             <div className="ticket-detail__info-item">
               <span className="ticket-detail__info-label">🏟️ 경기장</span>
@@ -210,7 +201,6 @@ function TicketDetailModal({ ticket, onClose, onContact, currentUser }) {
             )}
           </div>
 
-          {/* 설명 */}
           {ticket.description && (
             <div className="ticket-detail__desc">
               <p className="ticket-detail__desc-label">📝 추가 정보</p>
@@ -218,7 +208,6 @@ function TicketDetailModal({ ticket, onClose, onContact, currentUser }) {
             </div>
           )}
 
-          {/* 가격 + 작성자 */}
           <div className="ticket-detail__footer">
             <div>
               <div className="ticket-detail__price-label">양도 가격</div>
@@ -235,7 +224,6 @@ function TicketDetailModal({ ticket, onClose, onContact, currentUser }) {
             </div>
           </div>
 
-          {/* 액션 버튼 */}
           <div className="ticket-detail__actions">
             <button className="ticket-modal__btn-cancel" onClick={onClose}>닫기</button>
             {!isMyTicket && ticket.status !== 'sold' && (
@@ -289,14 +277,12 @@ function TicketWriteModal({ onClose, onSubmit }) {
   const [submitting, setSubmitting] = useState(false);
   const overlayRef = useRef(null);
 
-  // ESC 키로 닫기
   useEffect(() => {
     const handler = (e) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  // 배경 클릭으로 닫기
   const handleOverlayClick = (e) => {
     if (e.target === overlayRef.current) onClose();
   };
@@ -325,14 +311,12 @@ function TicketWriteModal({ onClose, onSubmit }) {
   return (
     <div className="ticket-modal-overlay" ref={overlayRef} onClick={handleOverlayClick}>
       <div className="ticket-modal" role="dialog" aria-modal="true" aria-label="티켓 양도 글쓰기">
-        {/* 헤더 */}
         <div className="ticket-modal__header">
           <h3 className="ticket-modal__title">🎫 티켓 양도 등록</h3>
           <button className="ticket-modal__close" onClick={onClose} aria-label="닫기">✕</button>
         </div>
 
         <form className="ticket-modal__form" onSubmit={handleSubmit}>
-          {/* 팀 선택 */}
           <div className="ticket-form-row ticket-form-row--2col">
             <div className="ticket-form-field">
               <label className="ticket-form-label">홈팀 <span className="required">*</span></label>
@@ -348,7 +332,6 @@ function TicketWriteModal({ onClose, onSubmit }) {
             </div>
           </div>
 
-          {/* 날짜 & 시간 */}
           <div className="ticket-form-row ticket-form-row--2col">
             <div className="ticket-form-field">
               <label className="ticket-form-label">경기 날짜 <span className="required">*</span></label>
@@ -369,7 +352,6 @@ function TicketWriteModal({ onClose, onSubmit }) {
             </div>
           </div>
 
-          {/* 경기장 */}
           <div className="ticket-form-field">
             <label className="ticket-form-label">경기장 <span className="required">*</span></label>
             <select className="ticket-form-select" value={form.stadium} onChange={(e) => set('stadium', e.target.value)}>
@@ -377,7 +359,6 @@ function TicketWriteModal({ onClose, onSubmit }) {
             </select>
           </div>
 
-          {/* 좌석 정보 */}
           <div className="ticket-form-row ticket-form-row--3col">
             <div className="ticket-form-field">
               <label className="ticket-form-label">좌석 구역 <span className="required">*</span></label>
@@ -411,7 +392,6 @@ function TicketWriteModal({ onClose, onSubmit }) {
             </div>
           </div>
 
-          {/* 가격 */}
           <div className="ticket-form-field">
             <label className="ticket-form-label">양도 가격 (원) <span className="required">*</span></label>
             <input
@@ -425,7 +405,6 @@ function TicketWriteModal({ onClose, onSubmit }) {
             />
           </div>
 
-          {/* 설명 */}
           <div className="ticket-form-field">
             <label className="ticket-form-label">추가 설명</label>
             <textarea
@@ -437,7 +416,6 @@ function TicketWriteModal({ onClose, onSubmit }) {
             />
           </div>
 
-          {/* 버튼 영역 */}
           <div className="ticket-modal__actions">
             <button type="button" className="ticket-modal__btn-cancel" onClick={onClose} disabled={submitting}>
               취소
@@ -472,8 +450,7 @@ export default function TicketTransferBoard({ onOpenChat }) {
     try {
       setLoading(true);
       setError(null);
-      // 올바른 엔드포인트: /posts?boardType=TRANSFER
-      const response = await api.get('/posts?boardType=TRANSFER');
+      const response = await api.get('/ticket-transfers');
       const data = response.data;
       let items = [];
       if (data && data.data) {
@@ -481,31 +458,30 @@ export default function TicketTransferBoard({ onOpenChat }) {
       } else if (data) {
         items = Array.isArray(data) ? data : (data.content || []);
       }
-      
-      // ✅ 데이터 정규화: 백엔드 필드명(TransferResponse)을 프론트 규격에 매핑
+
       const normalized = items.map(t => {
         const homeShort = getShortName(t.homeTeamName || t.homeTeam);
         const awayShort = getShortName(t.awayTeamName || t.awayTeam);
-        
+
         return {
           ...t,
+          authorId: t.authorId,
           author: t.authorNickname || t.author || t.nickname || t.userNickname || '익명',
           homeTeam: homeShort,
           awayTeam: awayShort,
           matchDate: t.matchDate || '',
-          matchTime: t.matchTime || '시간 미정', // PostDto.TransferResponse엔 matchTime이 없음
+          matchTime: t.matchTime || '시간 미정',
           price: t.ticketPrice ?? t.price ?? 0,
           stadium: t.stadium || STADIUMS[TEAM_ID_MAP[homeShort]] || '경기장 미상',
           seatArea: t.seatArea || '',
-          seatBlock: '', // seatArea에 통합됨
-          seatRow: '',
-          description: t.content || '',
+          seatBlock: t.seatBlock || '',
+          seatRow: t.seatRow || '',
+          description: t.content || t.description || '',
           createdAt: t.createdAt ? t.createdAt.split('T')[0] : '방금 전',
-          // 상태 문자열 통일
           status: t.status === 'CLOSED' ? 'sold' : (t.status === 'RESERVED' ? 'reserved' : 'selling'),
         };
       });
-      
+
       setTickets(normalized);
     } catch (err) {
       console.error('Failed to fetch tickets:', err);
@@ -515,23 +491,33 @@ export default function TicketTransferBoard({ onOpenChat }) {
     }
   };
 
-  // 연락하기 → 1:1 DM 열기
-  const handleContact = (ticket) => {
+  const handleContact = async (ticket) => {
     if (!user) {
       alert('로그인이 필요합니다.');
       return;
     }
-    if (onOpenChat) {
-      onOpenChat({
-        id: `ticket-dm-${ticket.id}-${ticket.author}`,
-        roomType: 'ONE_ON_ONE',
-        title: ticket.author,
-        lastMessage: '',
-        lastMessageAt: new Date().toISOString(),
-        unreadCount: 0,
-        crewTeam: '',
-        dmTargetNickname: ticket.author,
-      });
+
+    if (!ticket.authorId) {
+      alert('상대방 정보를 찾을 수 없습니다.');
+      return;
+    }
+
+    try {
+      const res = await api.post(`/chat/rooms/dm/user/${ticket.authorId}`);
+      const roomId = res.data.data?.chatRoomId;
+
+      if (onOpenChat) {
+        onOpenChat({
+          id: roomId,
+          roomType: 'ONE_ON_ONE_DIRECT',
+          title: ticket.author,
+          isDm: true,
+          dmTargetNickname: ticket.author,
+        });
+      }
+    } catch (err) {
+      console.error('DM 채팅방 생성 실패:', err);
+      alert('채팅방 생성에 실패했습니다.');
     }
   };
 
@@ -549,29 +535,27 @@ export default function TicketTransferBoard({ onOpenChat }) {
       .join(" ");
 
     const payload = {
-      boardType: 'TRANSFER',
-      title: `[양도] ${formData.homeTeam} vs ${formData.awayTeam} (${formData.matchDate})`,
-      content: formData.description || '티켓 양도합니다.',
+      homeTeam: formData.homeTeam,
+      awayTeam: formData.awayTeam,
       matchDate: formData.matchDate,
-      homeTeamId: TEAM_ID_MAP[formData.homeTeam],
-      awayTeamId: TEAM_ID_MAP[formData.awayTeam],
+      matchTime: formData.matchTime || "00:00:00",
+      stadium: formData.stadium || "",
       seatArea: combinedSeatArea,
-      ticketPrice: Number(formData.price),
+      seatBlock: formData.seatBlock || "",
+      seatRow: formData.seatRow || "",
+      price: Number(formData.price),
+      description: formData.description || "",
     };
 
-    await api.post('/posts', payload);
-    
-    // 등록 성공 시 목록 갱신
+    await api.post('/ticket-transfers', payload);
     await fetchTickets();
   };
 
-  // 날짜 옵션 생성 (실제 데이터에서 추출)
   const dateOptions = useMemo(() => {
     const dates = [...new Set(tickets.map((t) => t.matchDate))].sort();
     return ['전체', ...dates];
   }, [tickets]);
 
-  // 필터링
   const filtered = useMemo(() => {
     return tickets.filter((t) => {
       const dateMatch = filterDate === '전체' || t.matchDate === filterDate;
@@ -583,7 +567,6 @@ export default function TicketTransferBoard({ onOpenChat }) {
 
   return (
     <div className="ticket-transfer-page">
-      {/* ── 페이지 헤더 ── */}
       <div className="ticket-page-header">
         <div className="ticket-page-header__left">
           <h2 className="page-title">🎫 티켓 양도</h2>
@@ -594,7 +577,6 @@ export default function TicketTransferBoard({ onOpenChat }) {
         </button>
       </div>
 
-      {/* ── 필터 바 ── */}
       <div className="ticket-filter-bar" id="ticket-filter-bar">
         <FilterSelect
           label="날짜"
@@ -622,7 +604,6 @@ export default function TicketTransferBoard({ onOpenChat }) {
         </div>
       </div>
 
-      {/* ── 티켓 카드 그리드 ── */}
       {loading ? (
         <div className="empty-state">
           <div className="empty-icon">⏳</div>
@@ -646,7 +627,6 @@ export default function TicketTransferBoard({ onOpenChat }) {
         </div>
       )}
 
-      {/* ── 글쓰기 모달 ── */}
       {showWriteModal && (
         <TicketWriteModal
           onClose={() => setShowWriteModal(false)}
@@ -654,7 +634,6 @@ export default function TicketTransferBoard({ onOpenChat }) {
         />
       )}
 
-      {/* ── 티켓 상세 모달 ── */}
       {selectedTicket && (
         <TicketDetailModal
           ticket={selectedTicket}
