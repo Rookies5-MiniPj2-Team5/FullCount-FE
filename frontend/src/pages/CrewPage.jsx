@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import CrewDetailPage from "./CrewDetailPage";
+import { createOrGetCrewDmRoom, createOrGetDmByNickname } from "../api/chat";
 import ChatPage from "./ChatPage";
 import { StatusBadge } from "../components/StatusBadge";
 import { TeamFilter, TEAMS } from "../components/TeamComponents";
@@ -30,23 +31,23 @@ const TEAM_CODE_TO_NAME = {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 const DUMMY_RESPONSE = [
   // 팀 필터 테스트: LG (OPEN)
-  { id: 1, authorNickname: "야구팬1",   title: "잠실 LG 직관 크루 구합니다!",      content: "같이 응원해요! 초보 환영 ⚾",      boardType: "CREW", status: "OPEN",   supportTeamName: "LG 트윈스",    maxParticipants: 4, currentParticipants: 1, stadium: "잠실야구장",             matchDate: "2026-04-05", matchTime: "18:30" },
+  { id: 1, authorId: 101, authorNickname: "야구팬1",   title: "잠실 LG 직관 크루 구합니다!",      content: "같이 응원해요! 초보 환영 ⚾",      boardType: "CREW", status: "OPEN",   supportTeamName: "LG 트윈스",    maxParticipants: 4, currentParticipants: 1, stadium: "잠실야구장",             matchDate: "2026-04-05", matchTime: "18:30" },
   // 팀 필터 테스트: LG (FULL - 마감 필터 테스트)
-  { id: 2, authorNickname: "트윈스킹",  title: "LG 홈경기 응원단 모집 (마감)",      content: "인원이 다 찼어요!",               boardType: "CREW", status: "OPEN",   supportTeamName: "LG 트윈스",    maxParticipants: 3, currentParticipants: 3, stadium: "잠실야구장",             matchDate: "2026-04-07", matchTime: "14:00" },
+  { id: 2, authorId: 102, authorNickname: "트윈스킹",  title: "LG 홈경기 응원단 모집 (마감)",      content: "인원이 다 찼어요!",               boardType: "CREW", status: "OPEN",   supportTeamName: "LG 트윈스",    maxParticipants: 3, currentParticipants: 3, stadium: "잠실야구장",             matchDate: "2026-04-07", matchTime: "14:00" },
   // 팀 필터 테스트: SSG
-  { id: 3, authorNickname: "홈런왕",    title: "문학 SSG 원정 크루 모집",          content: "원정 응원 가실 분?",              boardType: "CREW", status: "OPEN",   supportTeamName: "SSG 랜더스",   maxParticipants: 3, currentParticipants: 2, stadium: "인천 SSG 랜더스필드",   matchDate: "2026-04-10", matchTime: "18:30" },
+  { id: 3, authorId: 103, authorNickname: "홈런왕",    title: "문학 SSG 원정 크루 모집",          content: "원정 응원 가실 분?",              boardType: "CREW", status: "OPEN",   supportTeamName: "SSG 랜더스",   maxParticipants: 3, currentParticipants: 2, stadium: "인천 SSG 랜더스필드",   matchDate: "2026-04-10", matchTime: "18:30" },
   // 팀 필터 테스트: 삼성
-  { id: 4, authorNickname: "사자팬",    title: "대구 라팍 삼성 직관 크루!",        content: "치맥 같이 먹으면서 봐요.",        boardType: "CREW", status: "OPEN",   supportTeamName: "삼성 라이온즈", maxParticipants: 6, currentParticipants: 2, stadium: "대구 삼성 라이온즈 파크", matchDate: "2026-04-12", matchTime: "14:00" },
+  { id: 4, authorId: 104, authorNickname: "사자팬",    title: "대구 라팍 삼성 직관 크루!",        content: "치맥 같이 먹으면서 봐요.",        boardType: "CREW", status: "OPEN",   supportTeamName: "삼성 라이온즈", maxParticipants: 6, currentParticipants: 2, stadium: "대구 삼성 라이온즈 파크", matchDate: "2026-04-12", matchTime: "14:00" },
   // 팀 필터 테스트: 두산
-  { id: 5, authorNickname: "곰팬이에요", title: "두산 개막전 같이 가요!",           content: "3루 응원석 자리 있어요 🐻",       boardType: "CREW", status: "OPEN",   supportTeamName: "두산 베어스",   maxParticipants: 5, currentParticipants: 3, stadium: "잠실야구장",             matchDate: "2026-04-05", matchTime: "18:30" },
+  { id: 5, authorId: 105, authorNickname: "곰팬이에요", title: "두산 개막전 같이 가요!",           content: "3루 응원석 자리 있어요 🐻",       boardType: "CREW", status: "OPEN",   supportTeamName: "두산 베어스",   maxParticipants: 5, currentParticipants: 3, stadium: "잠실야구장",             matchDate: "2026-04-05", matchTime: "18:30" },
   // 팀 필터 테스트: KIA
-  { id: 6, authorNickname: "호랑이",    title: "광주 KIA 직관 크루 모집 중",       content: "챔피언스필드 같이 가요!",         boardType: "CREW", status: "OPEN",   supportTeamName: "KIA 타이거즈",  maxParticipants: 4, currentParticipants: 1, stadium: "광주-기아 챔피언스 필드",  matchDate: "2026-04-15", matchTime: "18:00" },
+  { id: 6, authorId: 106, authorNickname: "호랑이",    title: "광주 KIA 직관 크루 모집 중",       content: "챔피언스필드 같이 가요!",         boardType: "CREW", status: "OPEN",   supportTeamName: "KIA 타이거즈",  maxParticipants: 4, currentParticipants: 1, stadium: "광주-기아 챔피언스 필드",  matchDate: "2026-04-15", matchTime: "18:00" },
   // 상태 필터 테스트: 마감된 크루 (두산)
-  { id: 7, authorNickname: "직관고수",  title: "두산 원정 크루 (마감됨)",          content: "인원이 모두 찼습니다!",           boardType: "CREW", status: "CLOSED", supportTeamName: "두산 베어스",   maxParticipants: 4, currentParticipants: 4, stadium: "잠실야구장",             matchDate: "2026-04-08", matchTime: "18:30" },
+  { id: 7, authorId: 107, authorNickname: "직관고수",  title: "두산 원정 크루 (마감됨)",          content: "인원이 모두 찼습니다!",           boardType: "CREW", status: "CLOSED", supportTeamName: "두산 베어스",   maxParticipants: 4, currentParticipants: 4, stadium: "잠실야구장",             matchDate: "2026-04-08", matchTime: "18:30" },
   // 팀 필터 테스트: 한화
-  { id: 8, authorNickname: "독수리팬",  title: "한화 이글스파크 직관 모집",        content: "대전까지 같이 가요! 🦅",         boardType: "CREW", status: "OPEN",   supportTeamName: "한화 이글스",   maxParticipants: 5, currentParticipants: 2, stadium: "한화생명이글스파크",        matchDate: "2026-04-20", matchTime: "14:00" },
+  { id: 8, authorId: 108, authorNickname: "독수리팬",  title: "한화 이글스파크 직관 모집",        content: "대전까지 같이 가요! 🦅",         boardType: "CREW", status: "OPEN",   supportTeamName: "한화 이글스",   maxParticipants: 5, currentParticipants: 2, stadium: "한화생명이글스파크",        matchDate: "2026-04-20", matchTime: "14:00" },
   // 팀 필터 테스트: 롯데
-  { id: 9, authorNickname: "갈매기",    title: "사직 롯데 직관 크루 모집",         content: "부산 직관 같이 가실 분!",         boardType: "CREW", status: "OPEN",   supportTeamName: "롯데 자이언츠",  maxParticipants: 6, currentParticipants: 4, stadium: "사직야구장",             matchDate: "2026-04-18", matchTime: "18:30" },
+  { id: 9, authorId: 109, authorNickname: "갈매기",    title: "사직 롯데 직관 크루 모집",         content: "부산 직관 같이 가실 분!",         boardType: "CREW", status: "OPEN",   supportTeamName: "롯데 자이언츠",  maxParticipants: 6, currentParticipants: 4, stadium: "사직야구장",             matchDate: "2026-04-18", matchTime: "18:30" },
 ];
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // ✂️  더미 데이터 끝
@@ -148,22 +149,43 @@ export default function CrewPage({ currentUser, onOpenChat }) {
     return true;
   });
 
-  const handleOpenDm = (targetNickname) => {
+  const handleOpenDm = async (targetNickname) => {
     if (!currentUser) {
       alert('로그인이 필요합니다.');
       return;
     }
-    if (onOpenChat) {
+    if (!onOpenChat) return;
+
+    try {
+      let room;
+
+      // 크루장에게 문의 → crewId 기반 엔드포인트 우선 (authorId로 폴백)
+      if (targetNickname === selectedCrew?.authorNickname && selectedCrew?.id) {
+        try {
+          room = await createOrGetCrewDmRoom(selectedCrew.id, selectedCrew.authorId);
+        } catch {
+          // crewId 기반 실패 시 닉네임으로 폴백
+          console.warn('[Crew] crewId 기반 DM 실패 - 닉네임으로 폴백:', targetNickname);
+          room = await createOrGetDmByNickname(targetNickname);
+        }
+      } else {
+        // 일반 멤버 → 닉네임으로 직접 조회
+        room = await createOrGetDmByNickname(targetNickname);
+      }
+
+      const roomId = room?.chatRoomId || room?.id;
+      if (!roomId) throw new Error('채팅방 ID를 받지 못했습니다.');
+
       onOpenChat({
-        id: `dm-${[currentUser.nickname, targetNickname].sort().join('-')}`,
-        crewId: selectedCrew?.id, // ID 해결을 위해 추가
-        roomType: 'ONE_ON_ONE',
+        id: roomId,
+        roomType: 'ONE_ON_ONE_DIRECT',
         title: targetNickname,
+        isDm: true,
         dmTargetNickname: targetNickname,
-        lastMessage: '',
-        lastMessageAt: new Date().toISOString(),
-        unreadCount: 0,
       });
+    } catch (err) {
+      console.error('채팅방 생성 실패:', err);
+      alert('채팅방을 열 수 없습니다.');
     }
   };
 
@@ -253,17 +275,8 @@ export default function CrewPage({ currentUser, onOpenChat }) {
           onBack={() => setView("list")}
           onOpenDmChat={(nickname) => handleOpenDm(nickname)}
         />
-      )}
 
-      {view === "dmChat" && selectedCrew && (
-        <ChatPage
-          crew={selectedCrew}
-          roomType="ONE_ON_ONE"
-          currentUser={currentUser}
-          isDm={true}
-          dmTargetNickname={selectedCrew.authorNickname}
-          onBack={() => setView("detail")}
-        />
+
       )}
 
       {isCreateModalOpen && (
@@ -284,10 +297,24 @@ export default function CrewPage({ currentUser, onOpenChat }) {
                 maxMember: formData.maxParticipants, // 백엔드 필드명 확인용 중복 전송
                 isPublic: formData.isPublic,
               };
-              await api.post('/posts', payload);
+              const res = await api.post('/posts', payload);
+              const newId = res.data?.data?.id || res.data?.id;
+
               setIsCreateModalOpen(false);
               fetchCrews();
-              alert('모집글이 등록되었습니다!');
+
+              if (newId) {
+                alert('모집글이 등록되었습니다!');
+                // 상세 페이지로 자동 이동 (필요한 최소 정보를 담아 이동)
+                goTo("detail", { 
+                  id: newId, 
+                  ...payload, 
+                  authorNickname: currentUser?.nickname,
+                  currentParticipants: 1 
+                });
+              } else {
+                alert('모집글이 등록되었습니다!');
+              }
             } catch (err) {
               console.error("Crew creation error:", err);
               const errMsg = err.response?.data?.message || "입력 정보를 다시 확인해주세요.";

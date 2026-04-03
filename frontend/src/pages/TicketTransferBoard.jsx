@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/api';
+import { createOrGetDmByNickname } from '../api/chat';
 
 // ─── KBO 팀 컬러 ───────────────────────────────────────────────────
 const TEAM_COLORS = {
@@ -500,14 +501,24 @@ export default function TicketTransferBoard({ onOpenChat }) {
       return;
     }
 
-    if (!ticket.authorId) {
-      alert('상대방 정보를 찾을 수 없습니다.');
-      return;
-    }
-
     try {
-      const res = await api.post(`/chat/rooms/dm/user/${ticket.authorId}`);
-      const roomId = res.data.data?.chatRoomId;
+      let roomId;
+
+      if (ticket.authorId) {
+        // authorId가 있으면 바로 DM 방 생성/조회
+        const res = await api.post(`/chat/rooms/dm/user/${ticket.authorId}`);
+        roomId = res.data.data?.chatRoomId || res.data.data?.id || res.data?.id;
+      } else if (ticket.author) {
+        // authorId가 없으면 닉네임으로 조회
+        console.warn('[TicketTransfer] authorId 없음 - 닉네임으로 DM 방 생성 시도:', ticket.author);
+        const room = await createOrGetDmByNickname(ticket.author);
+        roomId = room?.chatRoomId || room?.id;
+      } else {
+        alert('상대방 정보를 찾을 수 없습니다.');
+        return;
+      }
+
+      if (!roomId) throw new Error('채팅방 ID를 받지 못했습니다.');
 
       if (onOpenChat) {
         onOpenChat({

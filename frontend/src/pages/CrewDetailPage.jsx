@@ -76,7 +76,9 @@ export default function CrewDetailPage({
   onBack,
   onOpenDmChat,
 }) {
-  const currentUserId = currentUser?.nickname; // 닉네임으로 비교하도록 수정
+  if (!crew) return null;
+
+  const currentUserId = currentUser?.nickname; 
   const [tab, setTab] = useState("info");
   const [members, setMembers] = useState([]); // 실제 멤버 상태
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
@@ -84,9 +86,9 @@ export default function CrewDetailPage({
   const [loadingMembers, setLoadingMembers] = useState(false);
 
   // 설계서상 teamName 매칭을 위한 팀 키 추출
-  const teamKey = crew?.supportTeamName?.split(' ')[0] || crew?.team?.split(' ')[0];
+  const teamKey = crew.supportTeamName?.split(' ')[0] || crew.team?.split(' ')[0];
   const teamColor = TEAM_COLORS[teamKey] || "#e94560";
-  const isFull = crew?.currentParticipants >= crew?.maxParticipants;
+  const isFull = crew.currentParticipants >= crew.maxParticipants;
 
   // 1. 멤버 목록 조회 (설계서 4.2.7)
   const fetchMembers = async () => {
@@ -105,8 +107,9 @@ export default function CrewDetailPage({
     if (crew?.id) fetchMembers();
   }, [crew?.id]);
 
-  // 현재 유저가 멤버인지 확인
-  const isUserMember = members.some(m => m.nickname === crew.authorNickname || m.nickname === currentUserId);
+  // 현재 유저가 크루장인지 / 멤버인지 확인 (기존 logic 오류 수정)
+  const isAuthor = currentUser?.nickname === crew?.authorNickname;
+  const isUserInCrew = members.some(m => m.nickname === currentUser?.nickname);
 
   // 2. 참여 신청 (설계서 4.2.6)
   const handleApply = async (message) => {
@@ -120,8 +123,6 @@ export default function CrewDetailPage({
       alert(err.response?.data?.message || "신청에 실패했습니다. 이미 참여 중이거나 정원이 찼을 수 있습니다.");
     }
   };
-
-  if (!crew) return null;
 
   return (
     <div>
@@ -216,27 +217,24 @@ export default function CrewDetailPage({
               <div style={{ fontSize: 13, fontWeight: 700, color: "#1a2a4a", marginBottom: 12 }}>⚾ 크루장</div>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <div 
-                  onClick={() => onOpenDmChat?.(crew.authorNickname)}
                   style={{ 
                     width: 44, height: 44, borderRadius: "50%", 
                     background: "linear-gradient(135deg, #1a2a4a, #e94560)", 
                     color: "#fff", display: "flex", alignItems: "center", 
                     justifyContent: "center", fontWeight: 700, fontSize: 18, 
                     flexShrink: 0, boxShadow: `0 0 0 3px ${teamColor}40`,
-                    cursor: "pointer"
                   }}
                 >
                   {crew.authorNickname?.slice(0, 1)}
                 </div>
                 <div 
-                  style={{ flex: 1, cursor: "pointer" }}
-                  onClick={() => onOpenDmChat?.(crew.authorNickname)}
+                  style={{ flex: 1 }}
                 >
                   <div style={{ fontSize: 15, fontWeight: 700, color: "#1a2a4a" }}>{crew.authorNickname}</div>
                   <div style={{ fontSize: 12, color: "#999" }}>🌡️ 매너온도 {crew.mannerTemperature || 36.5}°</div>
                 </div>
-                {!isUserMember && (
-                  <button onClick={() => onOpenDmChat?.(crew.authorNickname)} style={{ padding: "8px 14px", borderRadius: 10, background: "#f5f5f5", border: "1px solid #eee", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>💬 1:1 문의</button>
+                {!isAuthor && !isUserInCrew && (
+                  <button onClick={() => onOpenDmChat?.(crew.authorNickname)} style={{ padding: "8px 14px", borderRadius: 10, background: "#f5f5f5", border: "1px solid #eee", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>💬 크루장에게 1:1 문의하기</button>
                 )}
               </div>
             </div>
@@ -264,7 +262,7 @@ export default function CrewDetailPage({
         )}
       </div>
 
-      {!isFull && !applyDone && !isUserMember && (
+      {!isFull && !applyDone && !isUserInCrew && (
         <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", padding: "8px 16px", background: "#fff", borderRadius: "20px", border: "1px solid #eee", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", zIndex: 100 }}>
           <button
             onClick={() => {

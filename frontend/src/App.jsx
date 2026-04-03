@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from './context/AuthContext'
 import MeetupPage from './pages/MeetupPage'
-// 🚨 아래 줄의 철자(대소문자)를 컴포넌트 이름과 일치하도록 수정했습니다!
-import MeetupDetailPage from './pages/Meetupdetailpage' 
 import CrewPage from './pages/CrewPage'
 import MyPage from './pages/MyPage'
 import SchedulePage from './pages/SchedulePage'
@@ -127,7 +125,7 @@ export default function App() {
           : <MeetupPage key="meetup" onSelectPost={(id) => navigateTo('meetup', id)} />;
 
       case 'meetup-create':
-        return <MeetupPage key="meetup-create" initialOpen={true} onSelectPost={(id) => navigateTo('meetup-create', id)} />;
+        return <MeetupPage key="meetup-create" initialOpen={true} onSelectPost={(id) => navigateTo('meetup', id)} />;
 
       case 'crew':
         return <CrewPage currentUser={user} onOpenChat={handleOpenChat} />;
@@ -204,8 +202,8 @@ export default function App() {
           roomType={chatRoom.roomType}
           roomId={chatRoom.id}
           currentUser={user}
-          isDm={chatRoom.roomType === 'ONE_ON_ONE'}
-          dmTargetNickname={chatRoom.roomType === 'ONE_ON_ONE' ? chatRoom.dmTargetNickname || chatRoom.title : undefined}
+          isDm={chatRoom.isDm || chatRoom.roomType === 'ONE_ON_ONE' || chatRoom.roomType === 'ONE_ON_ONE_DIRECT'}
+          dmTargetNickname={chatRoom.dmTargetNickname || (chatRoom.roomType?.includes('ONE_ON_ONE') ? chatRoom.title : undefined)}
           onBack={handleCloseChat}
         />
       )}
