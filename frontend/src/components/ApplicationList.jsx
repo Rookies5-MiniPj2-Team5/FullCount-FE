@@ -47,7 +47,7 @@ export default function ApplicationList({ applications, onAccept, onReject }) {
             <ApplicationStatusBadge status={app.status} />
 
             {/* 수락/거절 버튼 (대기중일 때만) */}
-            {app.status === 'PENDING' && (
+            {app.status === 'PENDING' && onAccept && onReject && (
               <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                 <button
                   onClick={() => onAccept(app.id)}
