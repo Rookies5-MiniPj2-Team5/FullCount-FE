@@ -96,6 +96,11 @@ export async function createOrGetCrewDmRoom(crewId) {
   return { id: 9000 + crewId };
 }
 
+export async function createOrGetDmByNickname(nickname) {
+  console.warn('[chat.js] createOrGetDmByNickname: mock mode', { nickname });
+  return { id: 9500, title: nickname };
+}
+
 /**
  * 티켓 양도 1:1 문의 채팅방 생성 or 조회
  * @param {number} postId
