@@ -1,117 +1,114 @@
-// api/chat.js
-import api from "./api";
+import api from './api';
+
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+const WS_URL = `${BASE_URL}/ws`;
+
+// ─────────────────────────────────────────────────────
+// [SOCKET] 실시간 통신 관련 (STOMP 등)
+// ─────────────────────────────────────────────────────
+
+export function connectSocket() {
+  // TODO: 실제 연결 로직 (new Client 등) 구현 시 수정
+  console.warn('[chat.js] connectSocket: mock mode', { WS_URL });
+  return null;
+}
+
+export function disconnectSocket() {
+  console.log('[chat.js] disconnectSocket');
+}
+
+export function subscribeToRoom(client, roomId) {
+  console.warn('[chat.js] subscribeToRoom: mock mode', { client, roomId });
+  return null;
+}
 
 /**
- * 닉네임으로 유저 ID를 조회한 뒤 1:1 채팅방 생성 or 조회
- * authorId가 없는 경우의 공통 폴백 유틸
- * @param {string} nickname - 상대방 닉네임
- * @returns {Promise<any>} - 채팅방 객체 { id, ... }
+ * 메시지 발행 (전송)
  */
-export async function createOrGetDmByNickname(nickname) {
-  if (!nickname) throw new Error("닉네임이 필요합니다.");
+export function sendMessage(client, roomId, payload) {
+  // TODO: BE 연동 시 아래 주석 해제
+  /*
+  client?.active && client.publish({
+    destination: `/app/chat/${roomId}`,
+    body: JSON.stringify({ roomId, ...payload }),
+    headers: { Authorization: `Bearer ${sessionStorage.getItem("accessToken")}` },
+  });
+  */
 
-  // 1. 닉네임 → userId 조회
-  const searchRes = await api.get(`/users/search?nickname=${encodeURIComponent(nickname)}`);
-  const userData = searchRes.data?.data || searchRes.data;
-  const userId = userData?.id || userData?.userId;
-
-  if (!userId) {
-    throw new Error(`닉네임(${nickname})에 해당하는 유저를 찾을 수 없습니다.`);
-  }
-
-  // 2. userId로 DM 방 생성/조회
-  return createOrGetDirectDmRoom(userId);
+  console.warn("[chat.js] sendMessage: 더미 모드", { roomId, payload });
 }
+
+// ─────────────────────────────────────────────────────
+// [REST API] 채팅방 (목록 · 상세 · 생성 · 내역)
+// ─────────────────────────────────────────────────────
+
+/**
+ * 공통 인증 헤더 (필요 시 api 인스턴스 대신 fetch 사용 시 활용)
+ */
+const authHeader = () => ({
+  "Content-Type": "application/json",
+  Authorization: `Bearer ${sessionStorage.getItem("accessToken")}`,
+});
+
+/**
+ * 내 채팅방 목록 조회 (페이징)
+ * @summary GET /api/chat/rooms
+ * @param {number} page
+ * @param {number} size
+ */
+export const fetchMyChatRooms = (page = 0, size = 10) =>
+  api.get('/chat/rooms', {
+    params: {
+      page,
+      size,
+      sort: 'createdAt,desc',
+    },
+  });
+
+/**
+ * 채팅방 상세 조회
+ * @summary GET /api/chat/rooms/{roomId}
+ * @param {number} roomId
+ */
+export const fetchChatRoomDetail = (roomId) =>
+  api.get(`/chat/rooms/${roomId}`);
+
+/**
+ * 직관 모임(메이트/크루) 그룹 채팅방 참여/생성
+ * @summary POST /api/chat/rooms?postId={postId}&type=GROUP_JOIN
+ */
+export const createOrGetMeetupGroupJoinRoom = (postId) =>
+  api.post('/chat/rooms', null, {
+    params: {
+      postId,
+      type: 'GROUP_JOIN',
+    },
+  });
 
 /**
  * 크루 1:1 문의 채팅방 생성 or 조회
  * @param {number} crewId
- * @param {number} authorId (Fallback용)
+ * @returns {Promise<{ id: number }>} chatRoomDTO
+ * TODO: BE 연동 - POST /api/chat/dm/crew/{crewId}
  */
-export async function createOrGetCrewDmRoom(crewId, authorId) {
-  try {
-    // @PostMapping("/dm/crew/{crewId}")
-    const res = await api.post(`/chat/rooms/dm/crew/${crewId}`);
-    return res.data.data || res.data;
-  } catch (err) {
-    if (authorId) return createOrGetDirectDmRoom(authorId);
-    throw err;
-  }
+export async function createOrGetCrewDmRoom(crewId) {
+  console.warn('[chat.js] createOrGetCrewDmRoom: mock mode', { crewId });
+  return { id: 9000 + crewId };
 }
 
 /**
- * 특정 사용자와의 1:1 채팅방 생성 or 조회 (가장 확실한 1:1 방식)
- * @param {number} targetUserId
- * @returns {Promise<any>}
+ * 티켓 양도 1:1 문의 채팅방 생성 or 조회
+ * @param {number} postId
  */
-export async function createOrGetDirectDmRoom(targetUserId) {
-  // TicketTransferBoard.jsx에서 사용하는 검증된 엔드포인트
-  const res = await api.post(`/chat/rooms/dm/user/${targetUserId}`);
-  return res.data.data || res.data;
+export async function createOrGetTransferDmRoom(postId) {
+  console.warn('[chat.js] createOrGetTransferDmRoom: mock mode', { postId });
+  return { id: 8000 + postId };
 }
 
 /**
- * 티켓 양도 1:1 채팅방 생성 or 조회
- * @param {number} ticketAuthorId
- * @returns {Promise<any>}
- */
-export async function createOrGetTransferDmRoom(ticketAuthorId) {
-  return createOrGetDirectDmRoom(ticketAuthorId);
-}
-
-export async function createOrGetMeetupDmRoom(postId, authorId) {
-  console.log('DM Room Args:', { postId, authorId });
-
-  if (!postId && !authorId) {
-    throw new Error('postId 또는 authorId가 필요합니다.');
-  }
-
-  // authorId가 있으면 가장 신뢰도 높은 DM 방식으로 직접 시도
-  if (authorId) {
-    try {
-      console.log('API Request: POST /chat/rooms/dm/user/' + authorId);
-      return await createOrGetDirectDmRoom(authorId);
-    } catch (err) {
-      console.error('직접 DM 생성 실패:', err);
-      throw err;
-    }
-  }
-
-  // authorId 없을 때만 meetup 전용 엔드포인트 시도
-  try {
-    console.log('API Request: POST /chat/rooms/dm/meetup/' + postId);
-    const res = await api.post(`/chat/rooms/dm/meetup/${postId}`, { postId });
-    return res.data.data || res.data;
-  } catch (err) {
-    console.error('모집글 전용 DM 생성 실패:', err);
-    throw err;
-  }
-}
-
-/**
- * 과거 채팅 메시지 조회 (페이징)
- * @param {number} roomId
- * @param {number} page
- * @returns {Promise<any>}
+ * 채팅방 과거 메시지 목록 조회
  */
 export async function fetchChatHistory(roomId, page = 0) {
-  const res = await api.get(`/chat/rooms/${roomId}/messages?page=${page}&size=50`);
-  return res.data.data || res.data;
-}
-
-/**
- * 채팅방 참여자 조회
- * @param {number} roomId
- */
-export async function fetchChatParticipants(roomId) {
-  const res = await api.get(`/chat/${roomId}`);
-  return res.data.data || res.data;
-}
-
-/**
- * 메시지 읽음 처리
- * @param {number} roomId
- */
-export async function markAsRead(roomId) {
-  return api.post(`/chat/rooms/${roomId}/read`);
+  console.warn('[chat.js] fetchChatHistory: mock mode', { roomId, page });
+  return [];
 }
