@@ -105,6 +105,8 @@ export default function ChatPage({
             .then(res => {
               const messages = res.data.data?.content || [];
               setMessages(messages.reverse());
+              //읽음 처리 추가
+              return api.post(`/chat/rooms/${currentRid}/read`);
             })
             .catch(err => console.error("메시지 조회 실패:", err));
         },
@@ -216,7 +218,10 @@ export default function ChatPage({
 
       {/* ══ 헤더 ══ */}
       <div style={s.header}>
-        <button style={s.backBtn} onClick={onBack}>✕</button>
+        <button style={s.backBtn} onClick={() => {
+          api.post(`/chat/rooms/${roomId}/read`).catch(() => { });
+          onBack();
+        }}>✕</button>
         <div
           style={{ ...s.headerInfo, cursor: "pointer" }}
           onClick={() => setShowParticipants((v) => !v)}
