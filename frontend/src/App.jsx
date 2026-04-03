@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from './context/AuthContext'
 import MeetupPage from './pages/MeetupPage'
-import Meetupdetailpage from './pages/Meetupdetailpage'
+import MeetupDetailPage from './pages/MeetupDetailPage'
 import CrewPage from './pages/CrewPage'
 import MyPage from './pages/MyPage'
 import SchedulePage from './pages/SchedulePage'

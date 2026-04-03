@@ -28,7 +28,7 @@ export default function MeetupDetailPage({ postId, onBack, onOpenChat }) {
     const [isApplyModalOpen, setIsApplyModalOpen] = useState(false)
     const [tab, setTab] = useState('info') // 'info' | 'apply'
 
-    const isAuthor = user?.nickname === post?.authorNickname
+    const isAuthor = !!user && !!post && user.nickname === post.authorNickname
 
     const handleOpenDm = () => {
         if (!user) {
@@ -38,7 +38,7 @@ export default function MeetupDetailPage({ postId, onBack, onOpenChat }) {
         if (onOpenChat && post?.authorNickname) {
             onOpenChat({
                 id: `dm-${[user.nickname, post.authorNickname].sort().join('-')}`,
-                postId: post.id, // ID 해결을 위해 추가
+                postId: post?.id, // ID 해결을 위해 추가
                 roomType: 'ONE_ON_ONE',
                 title: post.authorNickname,
                 dmTargetNickname: post.authorNickname,
