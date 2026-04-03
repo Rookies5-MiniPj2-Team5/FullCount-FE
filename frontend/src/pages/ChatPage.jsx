@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import SockJS from "sockjs-client";
 import Stomp from "stompjs";
 import api from "../api/api";
+import { fetchChatHistory, fetchChatParticipants, markAsRead } from "../api/chat";
 
 const fmtTime = (iso) =>
   new Date(iso).toLocaleTimeString("ko-KR", {
@@ -39,7 +40,7 @@ export default function ChatPage({
   crewId,
   postId,
   roomType = "GROUP",
-  roomId: initialRoomId,
+  roomId,
   currentUser,
   isDm = false,
   dmTargetNickname,
@@ -91,7 +92,7 @@ export default function ChatPage({
   }, [postId, roomType]);
 
   useEffect(() => {
-    if (isConnecting.current) return;
+    if (!roomId || isConnecting.current) return;
 
     const initChat = async () => {
       isConnecting.current = true;
@@ -138,13 +139,13 @@ export default function ChatPage({
       client.debug = null;
       clientRef.current = client;
 
-      const token = localStorage.getItem("accessToken");
+      const token = sessionStorage.getItem("accessToken");
       client.connect(
         { Authorization: `Bearer ${token}` },
         () => {
           setConnected(true);
 
-          client.subscribe(`/topic/chat/${currentRid}`, (frame) => {
+          client.subscribe(`/topic/chat/${roomId}`, (frame) => {
             try {
               const newMessage = JSON.parse(frame.body);
               setMessages((prev) => [

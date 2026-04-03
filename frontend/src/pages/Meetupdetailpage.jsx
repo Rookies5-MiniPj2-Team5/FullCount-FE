@@ -1,164 +1,141 @@
-import { useEffect, useState } from 'react';
-import ApplyModal from '../components/ApplyModal';
-import { StatusBadge } from '../components/StatusBadge';
-import { TeamBadge } from '../components/TeamComponents';
-import { createOrGetMeetupGroupJoinRoom, fetchChatRoomDetail } from '../api/chat';
-import { applyMeetupMate, getMeetupMateMembers, getMeetupPost } from '../api/meetup';
-import { useAuth } from '../context/AuthContext';
+// pages/MeetupDetailPage.jsx
 
-const AUTHOR_TEAM_MAP = {
-  'LG 트윈스': 'LG',
-  '두산 베어스': 'DU',
-  'SSG 랜더스': 'SSG',
-  'KIA 타이거즈': 'KIA',
-  '삼성 라이온즈': 'SA',
-  '롯데 자이언츠': 'LO',
-  '한화 이글스': 'HH',
-  'KT 위즈': 'KT',
-  'NC 다이노스': 'NC',
-  '키움 히어로즈': 'WO',
-};
-
-const unwrapResponseData = (responseData) => {
-  if (responseData && typeof responseData === 'object' && 'data' in responseData) {
-    return responseData.data;
-  }
-  return responseData;
-};
-
-const normalizePost = (post) => {
-  if (!post) return post;
-
-  return {
-    ...post,
-    currentParticipants: Number(post.currentParticipants) || 0,
-    maxParticipants: Number(post.maxParticipants) || 0,
-  };
-};
-
-const extractChatRoomId = (room) =>
-  room?.chatRoomId ?? room?.roomId ?? room?.id ?? null;
-
-const getAuthorTeamCode = (authorTeam) => {
-  if (!authorTeam) return 'LG';
-  if (AUTHOR_TEAM_MAP[authorTeam]) return AUTHOR_TEAM_MAP[authorTeam];
-
-  const matchedEntry = Object.entries(AUTHOR_TEAM_MAP).find(([teamName]) =>
-    authorTeam.includes(teamName.split(' ')[0]),
-  );
-
-  return matchedEntry?.[1] || 'LG';
-};
-
-function MemberCard({ member }) {
-  const avatarLabel = member.nickname?.substring(0, 1) || '?';
-
-  return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 0', borderBottom: '1px solid #f5f5f5' }}>
-      <div
-        style={{
-          width: 38,
-          height: 38,
-          borderRadius: '50%',
-          background: '#1a2a4a',
-          color: '#fff',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontWeight: 700,
-          fontSize: 15,
-          flexShrink: 0,
-          overflow: 'hidden',
-        }}
-      >
-        {member.profileImage ? (
-          <img src={member.profileImage} alt={member.nickname} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        ) : (
-          avatarLabel
-        )}
-      </div>
-
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#1a2a4a' }}>{member.nickname}</div>
-          {member.isLeader && (
-            <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: '#fff0f3', color: '#e94560' }}>
-              작성자
-            </span>
-          )}
-          {typeof member.mannerTemperature === 'number' && (
-            <span style={{ fontSize: 12, color: '#777' }}>
-              매너온도 {member.mannerTemperature.toFixed(1)}
-            </span>
-          )}
-        </div>
-
-        {member.applyMessage && (
-          <div style={{ fontSize: 12, color: '#666', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'keep-all' }}>
-            {member.applyMessage}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
+import { useState, useEffect } from 'react'
+import { useAuth } from '../context/AuthContext'
+import { TeamBadge } from '../components/TeamComponents'
+import { StatusBadge } from '../components/StatusBadge'
+import ApplyModal from '../components/ApplyModal'
+import ApplicationList from '../components/ApplicationList'
+import MyApplicationStatus from '../components/MyApplicationStatus'
+import {
+    getMeetupPost,
+    getApplications,
+    getMyApplication,
+    applyMeetup,
+    cancelApplication,
+    acceptApplication,
+    rejectApplication,
+} from '../api/meetup'
+import { createOrGetMeetupDmRoom, createOrGetDmByNickname } from '../api/chat'
 
 export default function MeetupDetailPage({ postId, onBack, onOpenChat }) {
-  const { user } = useAuth();
+    const id = postId
+    const { user } = useAuth()
 
-  const [post, setPost] = useState(null);
-  const [members, setMembers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [membersLoading, setMembersLoading] = useState(false);
-  const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
-  const [tab, setTab] = useState('info');
-  const [groupChatRoomId, setGroupChatRoomId] = useState(null);
-  const [chatRoomLoading, setChatRoomLoading] = useState(false);
+    const [post, setPost] = useState(null)
+    const [applications, setApplications] = useState([])
+    const [myApplication, setMyApplication] = useState(null)
+    const [loading, setLoading] = useState(true)
+    const [isApplyModalOpen, setIsApplyModalOpen] = useState(false)
+    const [tab, setTab] = useState('info') // 'info' | 'apply'
 
-  const isAuthor = user?.nickname === post?.authorNickname;
-  const currentParticipants = post?.currentParticipants || 0;
-  const maxParticipants = post?.maxParticipants || 0;
-  const isFull = maxParticipants > 0 && currentParticipants >= maxParticipants;
-  const authorTeamCode = getAuthorTeamCode(post?.authorTeam);
-  const myMemberInfo = members.find((member) => member.nickname === user?.nickname) || null;
-  const progressRatio = maxParticipants > 0 ? Math.min(currentParticipants / maxParticipants, 1) : 0;
+    const isAuthor = !!user && !!post && user.nickname === post.authorNickname
 
-  const chatButtonVisible = isFull;
-  const chatButtonLabel = chatRoomLoading
-    ? '처리 중...'
-    : groupChatRoomId
-      ? '그룹 채팅방 입장'
-      : '그룹 채팅방 생성';
+    const handleOpenDm = async () => {
+        if (!user) {
+            alert('로그인이 필요합니다.')
+            return
+        }
 
-  const fetchPost = async () => {
-    try {
-      setLoading(true);
-      const res = await getMeetupPost(postId);
-      const data = normalizePost(unwrapResponseData(res.data));
-      setPost(data);
-      if (data?.chatRoomId) {
-        setGroupChatRoomId(data.chatRoomId);
-      }
-    } catch (error) {
-      console.error('게시글 상세 조회 실패:', error);
-      alert('게시글을 불러오지 못했습니다.');
-      onBack();
-    } finally {
-      setLoading(false);
+        console.log('Initiating DM with Post:', {
+            postId: post?.id,
+            authorId: post?.authorId,
+            authorNickname: post?.authorNickname,
+        })
+
+        if (!post?.id) {
+            alert('게시글 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.')
+            return
+        }
+
+        try {
+            let room;
+
+            if (post?.authorId) {
+                // authorId가 있으면 meetup 전용 엔드포인트 사용
+                room = await createOrGetMeetupDmRoom(post.id, post.authorId);
+            } else if (post?.authorNickname) {
+                // authorId 없으면 닉네임으로 조회 (공통 유틸)
+                console.warn('authorId 없음 - 닉네임으로 DM 생성 시도:', post.authorNickname)
+                room = await createOrGetDmByNickname(post.authorNickname)
+            } else {
+                alert('작성자 정보를 찾을 수 없습니다.')
+                return
+            }
+
+            const roomId = room?.chatRoomId || room?.id;
+            if (!roomId) throw new Error('채팅방 ID가 응답에 없습니다. 응답: ' + JSON.stringify(room))
+
+            onOpenChat?.({
+                id: roomId,
+                roomType: 'ONE_ON_ONE_DIRECT',
+                title: post.authorNickname,
+                isDm: true,
+                dmTargetNickname: post.authorNickname,
+            })
+        } catch (err) {
+            console.error('채팅방 생성 실패:', err)
+            alert('채팅방을 열 수 없습니다.')
+        }
     }
-  };
 
-  const fetchMembers = async () => {
-    try {
-      setMembersLoading(true);
-      const res = await getMeetupMateMembers(postId);
-      const data = unwrapResponseData(res.data);
-      setMembers(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error('참여 멤버 조회 실패:', error);
-      setMembers([]);
-    } finally {
-      setMembersLoading(false);
+    // ── 데이터 조회 ───────────────────────────────────
+    const fetchPost = async () => {
+        try {
+            setLoading(true)
+            const res = await getMeetupPost(id)
+            // BE: { success: true, data: { ... } } or { ... }
+            const postData = res.data?.data || res.data;
+            // ✅ 전체 응답 로깅 - 실제 필드명 확인용
+            console.log('[MeetupDetail] 게시글 전체 데이터:', postData);
+            setPost(postData)
+        } catch (err) {
+            console.error('게시글 로딩 실패:', err)
+            alert('게시글을 불러오지 못했습니다.')
+            onBack()
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const fetchApplications = async () => {
+        try {
+            const res = await getApplications(id)
+            setApplications(res.data?.data || res.data || [])
+        } catch (err) {
+            console.error('신청자 목록 로딩 실패:', err)
+        }
+    }
+
+    const fetchMyApplication = async () => {
+        try {
+            const res = await getMyApplication(id)
+            setMyApplication(res.data?.data || res.data)
+        } catch {
+            setMyApplication(null)
+        }
+    }
+
+    useEffect(() => {
+        fetchPost()
+        if (user) fetchMyApplication()
+    }, [id, user])
+
+    useEffect(() => {
+        if (isAuthor && post?.id) fetchApplications()
+    }, [post, isAuthor])
+
+    // ── 핸들러 ────────────────────────────────────────
+    const handleApply = async (message) => {
+        try {
+            await applyMeetup(id, message)
+            alert('신청이 완료되었습니다!')
+            setIsApplyModalOpen(false)
+            fetchMyApplication()
+            fetchPost()
+        } catch {
+            alert('신청에 실패했습니다. 이미 신청했거나 모집이 마감되었을 수 있어요.')
+        }
     }
   };
 
@@ -398,12 +375,97 @@ export default function MeetupDetailPage({ postId, onBack, onOpenChat }) {
               </div>
             )}
 
-            {!isAuthor && myMemberInfo && (
-              <div style={{ borderRadius: 12, padding: 14, marginBottom: 12, border: '1px solid #ddd', background: '#fafafa' }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#333', marginBottom: 8 }}>내 신청 현황</div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#1a2a4a', marginBottom: 4 }}>{myMemberInfo.nickname}</div>
-                {myMemberInfo.applyMessage && (
-                  <div style={{ fontSize: 12, color: '#666', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{myMemberInfo.applyMessage}</div>
+                {/* ── 모집 정보 탭 ── */}
+                {tab === 'info' && (
+                    <>
+                        {/* 상세 설명 */}
+                        <div style={{
+                            background: '#fff', borderRadius: 12, padding: 16,
+                            marginBottom: 12, border: '1px solid #eee',
+                        }}>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: '#1a2a4a', marginBottom: 8 }}>
+                                📋 상세 설명
+                            </div>
+                            <div style={{ fontSize: 13, color: '#666', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
+                                {post.content}
+                            </div>
+                        </div>
+
+                        {/* 경기 정보 그리드 */}
+                        <div style={{
+                            background: '#fff', borderRadius: 12, padding: 16,
+                            marginBottom: 12, border: '1px solid #eee',
+                        }}>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: '#1a2a4a', marginBottom: 12 }}>
+                                🏟️ 경기 정보
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                                {[
+                                    ['홈팀', post.homeTeamName],
+                                    ['원정팀', post.awayTeamName],
+                                    ['경기장', post.stadium || '미정'],
+                                    ['날짜', post.matchDate],
+                                    ...(post.matchTime ? [['시간', post.matchTime]] : []),
+                                ].map(([label, val]) => (
+                                    <div key={label} style={{
+                                        background: '#f9f9f9', borderRadius: 10, padding: 12,
+                                    }}>
+                                        <div style={{ fontSize: 11, color: '#aaa', fontWeight: 500, marginBottom: 4, textTransform: 'uppercase' }}>
+                                            {label}
+                                        </div>
+                                        <div style={{ fontSize: 14, fontWeight: 700, color: '#1a2a4a' }}>{val}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* 작성자 */}
+                        <div style={{
+                            background: '#fff', borderRadius: 12, padding: 16,
+                            marginBottom: 12, border: '1px solid #eee',
+                        }}>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: '#1a2a4a', marginBottom: 12 }}>
+                                ✍️ 작성자
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <div 
+                                    onClick={handleOpenDm}
+                                    style={{
+                                        width: 44, height: 44, borderRadius: '50%',
+                                        background: 'linear-gradient(135deg, #1a2a4a, #e94560)',
+                                        color: '#fff', display: 'flex', alignItems: 'center',
+                                        justifyContent: 'center', fontWeight: 700, fontSize: 18,
+                                        flexShrink: 0, boxShadow: '0 0 0 3px #e9456040',
+                                    }}>
+                                    {post.authorNickname?.substring(0, 1)}
+                                </div>
+                                <div 
+                                    style={{ flex: 1 }}
+                                >
+                                    <div style={{ fontSize: 15, fontWeight: 700, color: '#1a2a4a', marginBottom: 4 }}>
+                                        {post.authorNickname}
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        <TeamBadge teamId={post.teamName || 'LG'} />
+                                        <span style={{ fontSize: 12, color: '#bbb' }}>
+                                            {post.createdAt?.slice(0, 10)}
+                                        </span>
+                                    </div>
+                                </div>
+                                {!isAuthor && (
+                                    <button 
+                                        onClick={handleOpenDm}
+                                        style={{ 
+                                            padding: "8px 14px", borderRadius: 10, background: "#f5f5f5", 
+                                            border: "1px solid #eee", fontSize: 13, fontWeight: 700, cursor: "pointer" 
+                                        }}
+                                    >
+                                        💬 1:1 채팅으로 문의하기
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </>
                 )}
               </div>
             )}

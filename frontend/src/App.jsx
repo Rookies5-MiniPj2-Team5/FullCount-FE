@@ -129,7 +129,7 @@ export default function App() {
           : <MeetupPage key="meetup" onSelectPost={(id) => navigateTo('meetup', id)} />;
 
       case 'meetup-create':
-        return <MeetupPage key="meetup-create" initialOpen={true} onSelectPost={(id) => navigateTo('meetup-create', id)} />;
+        return <MeetupPage key="meetup-create" initialOpen={true} onSelectPost={(id) => navigateTo('meetup', id)} />;
 
       case 'crew':
         return <CrewPage currentUser={user} onOpenChat={handleOpenChat} />;
@@ -206,8 +206,8 @@ export default function App() {
           roomType={chatRoom.roomType}
           roomId={chatRoom.id}
           currentUser={user}
-          isDm={chatRoom.roomType === 'ONE_ON_ONE'}
-          dmTargetNickname={chatRoom.roomType === 'ONE_ON_ONE' ? chatRoom.dmTargetNickname || chatRoom.title : undefined}
+          isDm={chatRoom.isDm || chatRoom.roomType === 'ONE_ON_ONE' || chatRoom.roomType === 'ONE_ON_ONE_DIRECT'}
+          dmTargetNickname={chatRoom.dmTargetNickname || (chatRoom.roomType?.includes('ONE_ON_ONE') ? chatRoom.title : undefined)}
           onBack={handleCloseChat}
         />
       )}
