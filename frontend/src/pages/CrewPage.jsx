@@ -244,7 +244,7 @@ export default function CrewPage({ currentUser, onOpenChat }) {
         </>
       )}
 
-      {/* 💡 상세 페이지 컴포넌트로 핸들러 넘겨주기 */}
+      {/* 상세 페이지 컴포넌트로 핸들러 넘겨주기 */}
       {view === "detail" && selectedCrew && (
         <CrewDetailPage
           crew={selectedCrew}
@@ -284,7 +284,7 @@ export default function CrewPage({ currentUser, onOpenChat }) {
                 await api.put(`/posts/${editingCrew.id}`, payload);
                 alert("성공적으로 수정되었습니다.");
                 
-                // 💡 수정 후 상세 페이지를 보고 있는 상태라면 데이터 바로 동기화 (새로고침 없이 내용 반영)
+                //수정 후 상세 페이지를 보고 있는 상태라면 데이터 바로 동기화 (새로고침 없이 내용 반영)
                 if (selectedCrew?.id === editingCrew.id) {
                   setSelectedCrew(prev => ({ ...prev, ...payload }));
                 }

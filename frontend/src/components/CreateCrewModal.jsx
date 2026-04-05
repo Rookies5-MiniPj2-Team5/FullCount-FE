@@ -28,7 +28,7 @@ export default function CreateCrewModal({ onClose, onSubmit, initialData }) {
     matchDate: initialData?.matchDate || '',
   })
   
-  // 💡 수정 완료 시 변경 사항을 체크하기 위한 초기 상태값 복사본 저장
+  // 수정 완료 시 변경 사항을 체크하기 위한 초기 상태값 복사본 저장
   const [initialFormState] = useState({ ...formData });
   const [loading, setLoading] = useState(false)
 
@@ -58,7 +58,7 @@ export default function CreateCrewModal({ onClose, onSubmit, initialData }) {
       return alert("홈팀과 어웨이팀을 동일하게 선택할 수 없습니다.");
     }
 
-    // 💡 수정 모드일 때 변경사항 여부 검사
+    // 수정 모드일 때 변경사항 여부 검사
     if (isEditMode) {
       const hasChanged = Object.keys(formData).some(key => formData[key] !== initialFormState[key]);
       if (!hasChanged) {
@@ -147,7 +147,7 @@ export default function CreateCrewModal({ onClose, onSubmit, initialData }) {
             <input type="checkbox" checked={formData.isPublic} onChange={e => setFormData({ ...formData, isPublic: e.target.checked })} style={{ width: 20, height: 20, cursor: 'pointer', accentColor: '#e94560' }} />
           </div>
 
-          {/* 💡 하단 버튼: 취소 & 수정 완료/만들기 분기 처리 */}
+          {/* 하단 버튼: 취소 & 수정 완료/만들기 분기 처리 */}
           <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
             <button type="button" onClick={onClose} style={styles.cancelBtn}>
               취소
