@@ -3,6 +3,7 @@ import { TeamBadge } from '../components/TeamComponents';
 import api from '../api/api';
 import { useAuth } from '../context/AuthContext';
 import AttendanceCalendar from './AttendanceCalendar';
+import { StatusBadge } from '../components/StatusBadge'; 
 
 const KBO_TEAMS = [
   { id: 1, name: 'LG 트윈스' },
@@ -83,6 +84,11 @@ export default function MyPage() {
   const [chargeBalance, setChargeBalance] = useState('');
   const [isCharging, setIsCharging] = useState(false);
 
+  // 💡 [기능 추가] 참여 목록 상태
+  const [participatingActivities, setParticipatingActivities] = useState({ crews: [], mates: [], transfers: [] });
+  const [currentTab, setCurrentTab] = useState('crew');
+  const [loadingList, setLoadingList] = useState(false);
+
   useEffect(() => {
     if (!user) return;
 
@@ -96,7 +102,32 @@ export default function MyPage() {
     if (user.teamId) {
       setSelectedTeamId(String(user.teamId));
     }
+
+    // 초기 로드 시 실행
+    fetchParticipatingList();
   }, [user]);
+
+  // 데이터 불러오기 함수
+  const fetchParticipatingList = async () => {
+    setLoadingList(true);
+    try {
+      const [crewRes, mateRes, transferRes] = await Promise.all([
+        api.get('/posts', { params: { boardType: 'CREW', participating: true } }),
+        api.get('/posts', { params: { boardType: 'MATE', participating: true } }),
+        api.get('/transfers/me')
+      ]);
+      
+      setParticipatingActivities({
+        crews: crewRes.data?.data?.content || [],
+        mates: mateRes.data?.data?.content || [],
+        transfers: transferRes.data?.data?.content || []
+      });
+    } catch (error) {
+      console.error("참여 목록 로드 실패", error);
+    } finally {
+      setLoadingList(false);
+    }
+  };
 
   if (!user) {
     return (
@@ -383,6 +414,41 @@ export default function MyPage() {
         </div>
       </div>
 
+      {/* 💡 [기능 추가] 참여 중인 목록 섹션 */}
+      <div className="my-section" style={{ marginTop: 30 }}>
+        <h3 style={{ fontSize: 16, fontWeight: 800, marginBottom: 12 }}>참여 중인 목록</h3>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 15 }}>
+          {['crew', 'mate', 'transfer'].map(tab => (
+            <button
+              key={tab}
+              onClick={() => setCurrentTab(tab)}
+              style={{
+                padding: '8px 16px', borderRadius: 20, border: 'none', fontWeight: 700, cursor: 'pointer', fontSize: 13,
+                background: currentTab === tab ? '#2c3e50' : '#f0f0f0',
+                color: currentTab === tab ? '#fff' : '#666'
+              }}
+            >
+              {tab === 'crew' ? '크루' : tab === 'mate' ? '메이트' : '티켓양도'}
+              <span style={{ marginLeft: 4, fontSize: 11, opacity: 0.7 }}>
+                {tab === 'crew' ? participatingActivities.crews.length : tab === 'mate' ? participatingActivities.mates.length : participatingActivities.transfers.length}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #eee', overflow: 'hidden' }}>
+          {loadingList ? (
+            <div style={{ padding: 40, textAlign: 'center', color: '#999' }}>불러오는 중...</div>
+          ) : (
+            <>
+              {currentTab === 'crew' && (participatingActivities.crews.length > 0 ? participatingActivities.crews.map(item => <ListItem key={item.id} item={item} />) : <EmptyState type="크루" />)}
+              {currentTab === 'mate' && (participatingActivities.mates.length > 0 ? participatingActivities.mates.map(item => <ListItem key={item.id} item={item} />) : <EmptyState type="메이트" />)}
+              {currentTab === 'transfer' && (participatingActivities.transfers.length > 0 ? participatingActivities.transfers.map(item => <ListItem key={item.id} item={item} isTransfer />) : <EmptyState type="티켓" />)}
+            </>
+          )}
+        </div>
+      </div>
+
       <div className="my-section" style={{ marginTop: 30 }}>
         <div className="my-section-title" style={{ fontWeight: 800, marginBottom: 16 }}>직관 일정</div>
         <div className="schedule-card" style={{ background: '#2c3e50', padding: 20, borderRadius: 12, color: '#fff' }}>
@@ -641,4 +707,23 @@ export default function MyPage() {
       )}
     </div>
   );
+}
+
+// ─── 내부 도우미 컴포넌트 ───
+function ListItem({ item, isTransfer }) {
+  return (
+    <div style={{ padding: '16px 20px', borderBottom: '1px solid #f5f5f5', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>{item.title}</div>
+        <div style={{ fontSize: 12, color: '#999' }}>
+          {isTransfer ? `💰 ${item.price?.toLocaleString()}원` : `📅 ${item.matchDate}`} | 🏟️ {item.stadium || '구장 정보 없음'}
+        </div>
+      </div>
+      <StatusBadge status={item.status} />
+    </div>
+  );
+}
+
+function EmptyState({ type }) {
+  return <div style={{ padding: 40, textAlign: 'center', color: '#bbb', fontSize: 14 }}>참여 중인 {type}가 없습니다.</div>;
 }
