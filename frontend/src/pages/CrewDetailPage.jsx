@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { StatusBadge } from "../components/StatusBadge";
 import ApplyModal from "../components/ApplyModal";
-import api from "../api/api"; // API 인스턴스 임포트
+import api from "../api/api";
 
 const BADGE_EMOJI = { ROOKIE: "🌱", PRO: "⚡", ALL_STAR: "⭐", LEGEND: "🏆" };
 
@@ -14,17 +14,12 @@ const TEAM_COLORS = {
 
 // ─── 멤버 아이템 컴포넌트 ───
 function MemberItem({ member, onClick }) {
-  const isMe = false; // logic would need currentUser, but we can just let it be clickable
-  
   return (
     <div 
       onClick={() => onClick?.(member.nickname)}
       style={{
-        display: "flex", alignItems: "center", gap: 12,
-        padding: "12px 0",
-        borderBottom: "1px solid #f5f5f5",
-        cursor: "pointer",
-        transition: "background 0.2s",
+        display: "flex", alignItems: "center", gap: 12, padding: "12px 0",
+        borderBottom: "1px solid #f5f5f5", cursor: "pointer", transition: "background 0.2s",
       }}
       onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#fcfcfc'; }}
       onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
@@ -75,22 +70,22 @@ export default function CrewDetailPage({
   currentUser,
   onBack,
   onOpenDmChat,
+  onEdit,   // 💡 추가됨: CrewPage에서 받아온 수정 핸들러
+  onDelete  // 💡 추가됨: CrewPage에서 받아온 삭제 핸들러
 }) {
   if (!crew) return null;
 
   const currentUserId = currentUser?.nickname; 
   const [tab, setTab] = useState("info");
-  const [members, setMembers] = useState([]); // 실제 멤버 상태
+  const [members, setMembers] = useState([]); 
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
   const [applyDone, setApplyDone] = useState(false);
   const [loadingMembers, setLoadingMembers] = useState(false);
 
-  // 설계서상 teamName 매칭을 위한 팀 키 추출
   const teamKey = crew.supportTeamName?.split(' ')[0] || crew.team?.split(' ')[0];
   const teamColor = TEAM_COLORS[teamKey] || "#e94560";
   const isFull = crew.currentParticipants >= crew.maxParticipants;
 
-  // 1. 멤버 목록 조회 (설계서 4.2.7)
   const fetchMembers = async () => {
     setLoadingMembers(true);
     try {
@@ -107,18 +102,15 @@ export default function CrewDetailPage({
     if (crew?.id) fetchMembers();
   }, [crew?.id]);
 
-  // 현재 유저가 크루장인지 / 멤버인지 확인 (기존 logic 오류 수정)
   const isAuthor = currentUser?.nickname === crew?.authorNickname;
   const isUserInCrew = members.some(m => m.nickname === currentUser?.nickname);
 
-  // 2. 참여 신청 (설계서 4.2.6)
   const handleApply = async (message) => {
     try {
-      // 설계서 규격에 맞게 POST 요청
       await api.post(`/posts/${crew.id}/join`);
       setApplyDone(true);
       setIsApplyModalOpen(false);
-      fetchMembers(); // 참여 완료 후 목록 새로고침
+      fetchMembers(); 
     } catch (err) {
       alert(err.response?.data?.message || "신청에 실패했습니다. 이미 참여 중이거나 정원이 찼을 수 있습니다.");
     }
@@ -126,14 +118,38 @@ export default function CrewDetailPage({
 
   return (
     <div>
-      <div className="top-bar" style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <button
-          onClick={onBack}
-          style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", padding: 0 }}
-        >
-          ←
-        </button>
-        <h1 style={{ fontSize: 18, margin: 0 }}>크루 상세</h1>
+      <div className="top-bar" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <button
+            onClick={onBack}
+            style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", padding: 0 }}
+          >
+            ←
+          </button>
+          <h1 style={{ fontSize: 18, margin: 0 }}>크루 상세</h1>
+        </div>
+
+        {/* 💡 작성자 본인일 경우 [수정] / [삭제] 버튼 노출 */}
+        {isAuthor && (
+          <div style={{ display: "flex", gap: "6px" }}>
+            {onEdit && (
+              <button
+                onClick={() => onEdit(crew)}
+                style={{ padding: "6px 12px", borderRadius: "8px", background: "#f5f5f5", border: "1px solid #e1e1e1", fontSize: 13, fontWeight: 700, cursor: "pointer", color: "#333" }}
+              >
+                수정
+              </button>
+            )}
+            {onDelete && (
+              <button
+                onClick={() => onDelete(crew)}
+                style={{ padding: "6px 12px", borderRadius: "8px", background: "#fff5f5", border: "1px solid #ffcccc", fontSize: 13, fontWeight: 700, cursor: "pointer", color: "#d32f2f" }}
+              >
+                삭제
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="page-content" style={{ paddingBottom: 120 }}>
@@ -155,7 +171,7 @@ export default function CrewDetailPage({
           <div style={{ display: "flex", justifyContent: "center", gap: 16, fontSize: 13, opacity: 0.85, flexWrap: "wrap" }}>
             <span>🏟️ {crew.stadium}</span>
             <span>📅 {crew.matchDate}</span>
-            <span>🕐 {crew.matchTime}</span>
+            {crew.matchTime && <span>🕐 {crew.matchTime}</span>}
           </div>
         </div>
 
@@ -227,9 +243,7 @@ export default function CrewDetailPage({
                 >
                   {crew.authorNickname?.slice(0, 1)}
                 </div>
-                <div 
-                  style={{ flex: 1 }}
-                >
+                <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 15, fontWeight: 700, color: "#1a2a4a" }}>{crew.authorNickname}</div>
                   <div style={{ fontSize: 12, color: "#999" }}>🌡️ 매너온도 {crew.mannerTemperature || 36.5}°</div>
                 </div>
