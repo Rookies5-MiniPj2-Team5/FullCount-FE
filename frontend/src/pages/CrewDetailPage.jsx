@@ -70,8 +70,8 @@ export default function CrewDetailPage({
   currentUser,
   onBack,
   onOpenDmChat,
-  onEdit,   // 💡 추가됨: CrewPage에서 받아온 수정 핸들러
-  onDelete  // 💡 추가됨: CrewPage에서 받아온 삭제 핸들러
+  onEdit,
+  onDelete
 }) {
   if (!crew) return null;
 
