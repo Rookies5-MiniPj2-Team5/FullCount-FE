@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import CrewDetailPage from "./CrewDetailPage";
 import { createOrGetCrewDmRoom, createOrGetDmByNickname } from "../api/chat";
-import ChatPage from "./ChatPage";
 import { StatusBadge } from "../components/StatusBadge";
 import { TeamFilter, TEAMS } from "../components/TeamComponents";
 import CreateCrewModal from "../components/CreateCrewModal";
@@ -14,51 +13,24 @@ const TEAM_COLORS = {
   "KIA": "#EA0029",
 };
 
-// ✅ 팀 코드 → BE teamId 매핑 (GET /api/teams 응답 기준)
 const TEAM_CODE_MAP = {
   LG: 1, DU: 2, SSG: 3, KIA: 4, SA: 5,
   LO: 6, HH: 7, KT: 8, NC: 9, WO: 10,
 };
 
-// ✅ 팀 코드 → 팀 표시명 매핑 (클라이언트 필터용)
 const TEAM_CODE_TO_NAME = {
   LG: 'LG', DU: '두산', SSG: 'SSG', KIA: 'KIA',
   SA: '삼성', LO: '롯데', HH: '한화', KT: 'KT', NC: 'NC', WO: '키움',
 };
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ✂️  더미 데이터 시작 — BE 연동 완료 후 아래 블록 전체 삭제
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-const DUMMY_RESPONSE = [
-  // 팀 필터 테스트: LG (OPEN)
-  { id: 1, authorId: 101, authorNickname: "야구팬1",   title: "잠실 LG 직관 크루 구합니다!",      content: "같이 응원해요! 초보 환영 ⚾",      boardType: "CREW", status: "OPEN",   supportTeamName: "LG 트윈스",    maxParticipants: 4, currentParticipants: 1, stadium: "잠실야구장",             matchDate: "2026-04-05", matchTime: "18:30" },
-  // 팀 필터 테스트: LG (FULL - 마감 필터 테스트)
-  { id: 2, authorId: 102, authorNickname: "트윈스킹",  title: "LG 홈경기 응원단 모집 (마감)",      content: "인원이 다 찼어요!",               boardType: "CREW", status: "OPEN",   supportTeamName: "LG 트윈스",    maxParticipants: 3, currentParticipants: 3, stadium: "잠실야구장",             matchDate: "2026-04-07", matchTime: "14:00" },
-  // 팀 필터 테스트: SSG
-  { id: 3, authorId: 103, authorNickname: "홈런왕",    title: "문학 SSG 원정 크루 모집",          content: "원정 응원 가실 분?",              boardType: "CREW", status: "OPEN",   supportTeamName: "SSG 랜더스",   maxParticipants: 3, currentParticipants: 2, stadium: "인천 SSG 랜더스필드",   matchDate: "2026-04-10", matchTime: "18:30" },
-  // 팀 필터 테스트: 삼성
-  { id: 4, authorId: 104, authorNickname: "사자팬",    title: "대구 라팍 삼성 직관 크루!",        content: "치맥 같이 먹으면서 봐요.",        boardType: "CREW", status: "OPEN",   supportTeamName: "삼성 라이온즈", maxParticipants: 6, currentParticipants: 2, stadium: "대구 삼성 라이온즈 파크", matchDate: "2026-04-12", matchTime: "14:00" },
-  // 팀 필터 테스트: 두산
-  { id: 5, authorId: 105, authorNickname: "곰팬이에요", title: "두산 개막전 같이 가요!",           content: "3루 응원석 자리 있어요 🐻",       boardType: "CREW", status: "OPEN",   supportTeamName: "두산 베어스",   maxParticipants: 5, currentParticipants: 3, stadium: "잠실야구장",             matchDate: "2026-04-05", matchTime: "18:30" },
-  // 팀 필터 테스트: KIA
-  { id: 6, authorId: 106, authorNickname: "호랑이",    title: "광주 KIA 직관 크루 모집 중",       content: "챔피언스필드 같이 가요!",         boardType: "CREW", status: "OPEN",   supportTeamName: "KIA 타이거즈",  maxParticipants: 4, currentParticipants: 1, stadium: "광주-기아 챔피언스 필드",  matchDate: "2026-04-15", matchTime: "18:00" },
-  // 상태 필터 테스트: 마감된 크루 (두산)
-  { id: 7, authorId: 107, authorNickname: "직관고수",  title: "두산 원정 크루 (마감됨)",          content: "인원이 모두 찼습니다!",           boardType: "CREW", status: "CLOSED", supportTeamName: "두산 베어스",   maxParticipants: 4, currentParticipants: 4, stadium: "잠실야구장",             matchDate: "2026-04-08", matchTime: "18:30" },
-  // 팀 필터 테스트: 한화
-  { id: 8, authorId: 108, authorNickname: "독수리팬",  title: "한화 이글스파크 직관 모집",        content: "대전까지 같이 가요! 🦅",         boardType: "CREW", status: "OPEN",   supportTeamName: "한화 이글스",   maxParticipants: 5, currentParticipants: 2, stadium: "한화생명이글스파크",        matchDate: "2026-04-20", matchTime: "14:00" },
-  // 팀 필터 테스트: 롯데
-  { id: 9, authorId: 109, authorNickname: "갈매기",    title: "사직 롯데 직관 크루 모집",         content: "부산 직관 같이 가실 분!",         boardType: "CREW", status: "OPEN",   supportTeamName: "롯데 자이언츠",  maxParticipants: 6, currentParticipants: 4, stadium: "사직야구장",             matchDate: "2026-04-18", matchTime: "18:30" },
-];
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ✂️  더미 데이터 끝
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
 // ─── 크루 카드 ───
-function CrewCard({ crew, onClick }) {
+function CrewCard({ crew, currentUser, onClick, onEdit, onDelete }) {
   const teamKey = crew.supportTeamName?.split(' ')[0] || "기타";
   const color = TEAM_COLORS[teamKey] || "#ef4b5f";
   const isFull = crew.currentParticipants >= crew.maxParticipants;
   const ratio = crew.currentParticipants / crew.maxParticipants;
+  
+  const isAuthor = currentUser?.nickname === crew.authorNickname;
 
   return (
     <div
@@ -72,7 +44,26 @@ function CrewCard({ crew, onClick }) {
           <span style={{ fontSize: '11px', fontWeight: '800', color, background: color + "15", border: `1px solid ${color}30`, padding: "4px 10px", borderRadius: '12px' }}>
             {crew.supportTeamName}
           </span>
-          <StatusBadge status={crew.status} />
+          
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            {isAuthor && (
+              <div style={{ display: "flex", gap: "4px" }}>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); onEdit(crew); }} 
+                  style={{ padding: "4px 8px", fontSize: "11px", borderRadius: "4px", border: "1px solid #ddd", background: "#f9f9f9", color: "#555", cursor: "pointer" }}
+                >
+                  수정
+                </button>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); onDelete(crew); }} 
+                  style={{ padding: "4px 8px", fontSize: "11px", borderRadius: "4px", border: "1px solid #ffcccc", background: "#fff5f5", color: "#d32f2f", cursor: "pointer" }}
+                >
+                  삭제
+                </button>
+              </div>
+            )}
+            <StatusBadge status={crew.status} />
+          </div>
         </div>
         <div style={{ marginBottom: 10, fontSize: '16px', fontWeight: '800', color: '#222' }}>{crew.title}</div>
         <div style={{ marginBottom: 16, display: 'flex', gap: 10, fontSize: '12px', color: '#999' }}>
@@ -99,45 +90,35 @@ function CrewCard({ crew, onClick }) {
 // ─── 크루 페이지 메인 ───
 export default function CrewPage({ currentUser, onOpenChat }) {
   const [view, setView] = useState("list");
-  const [crews, setCrews] = useState(DUMMY_RESPONSE);
+  const [crews, setCrews] = useState([]);
   const [selectedCrew, setSelectedCrew] = useState(null);
   const [filterTeam, setFilterTeam] = useState("ALL");
   const [filterStatus, setFilterStatus] = useState("ALL");
+  
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [editingCrew, setEditingCrew] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const fetchCrews = async () => {
     setLoading(true);
     try {
-      // ✅ 팀 코드 → 숫자 teamId 변환
       const teamId = filterTeam === 'ALL' ? null : TEAM_CODE_MAP[filterTeam];
-      // ✅ BE PostStatus enum: OPEN | RESERVED | CLOSED
-      // FULL은 BE에 없으므로 API에는 보내지 않고 클라이언트에서 필터링
       const status = filterStatus === 'OPEN' ? 'OPEN' : null;
 
       const response = await api.get('/posts', {
-        params: {
-          boardType: 'CREW',
-          teamId,
-          status,
-          page: 0,
-          size: 10
-        }
+        params: { boardType: 'CREW', teamId, status, page: 0, size: 10 }
       });
       const content = response.data?.data?.content ?? response.data?.content ?? [];
       setCrews(content);
     } catch (error) {
-      console.warn("API 연동 실패: 더미 데이터 유지");
+      console.warn("API 연동 실패");
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchCrews();
-  }, [filterTeam, filterStatus]);
+  useEffect(() => { fetchCrews(); }, [filterTeam, filterStatus]);
 
-  // ✅ 클라이언트 사이드 필터링 (BE 필터 보조)
   const filteredCrews = crews.filter(crew => {
     if (filterTeam !== 'ALL') {
       const teamName = crew.supportTeamName || '';
@@ -150,42 +131,45 @@ export default function CrewPage({ currentUser, onOpenChat }) {
   });
 
   const handleOpenDm = async (targetNickname) => {
-    if (!currentUser) {
-      alert('로그인이 필요합니다.');
-      return;
-    }
+    if (!currentUser) return alert('로그인이 필요합니다.');
     if (!onOpenChat) return;
 
     try {
       let room;
-
-      // 크루장에게 문의 → crewId 기반 엔드포인트 우선 (authorId로 폴백)
       if (targetNickname === selectedCrew?.authorNickname && selectedCrew?.id) {
         try {
           room = await createOrGetCrewDmRoom(selectedCrew.id, selectedCrew.authorId);
         } catch {
-          // crewId 기반 실패 시 닉네임으로 폴백
-          console.warn('[Crew] crewId 기반 DM 실패 - 닉네임으로 폴백:', targetNickname);
           room = await createOrGetDmByNickname(targetNickname);
         }
       } else {
-        // 일반 멤버 → 닉네임으로 직접 조회
         room = await createOrGetDmByNickname(targetNickname);
       }
 
       const roomId = room?.chatRoomId || room?.id;
       if (!roomId) throw new Error('채팅방 ID를 받지 못했습니다.');
 
-      onOpenChat({
-        id: roomId,
-        roomType: 'ONE_ON_ONE_DIRECT',
-        title: targetNickname,
-        isDm: true,
-        dmTargetNickname: targetNickname,
-      });
+      onOpenChat({ id: roomId, roomType: 'ONE_ON_ONE_DIRECT', title: targetNickname, isDm: true, dmTargetNickname: targetNickname });
     } catch (err) {
-      console.error('채팅방 생성 실패:', err);
       alert('채팅방을 열 수 없습니다.');
+    }
+  };
+
+  const handleEdit = (crew) => {
+    setEditingCrew(crew);
+  };
+
+  // 💡 상세 페이지나 카드에서 모두 쓰이는 삭제 로직
+  const handleDelete = async (crew) => {
+    if (window.confirm("정말 이 모집글을 삭제하시겠습니까?")) {
+      try {
+        await api.delete(`/posts/${crew.id}`);
+        alert("삭제가 완료되었습니다.");
+        setView("list"); // 상세 페이지에서 삭제했을 경우를 대비해 목록으로 강제 전환
+        fetchCrews();    // 목록 새로고침
+      } catch (err) {
+        alert("삭제에 실패했습니다. 다시 시도해주세요.");
+      }
     }
   };
 
@@ -207,20 +191,12 @@ export default function CrewPage({ currentUser, onOpenChat }) {
           <div style={{ background: '#fff', padding: '20px 24px', borderRadius: '12px', marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '16px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
             <TeamFilter selected={filterTeam} onChange={setFilterTeam} />
             <div style={{ display: 'flex', gap: '8px' }}>
-              {[
-                { id: "ALL",  label: "전체 상태" },
-                { id: "OPEN", label: "모집 중" },
-                { id: "FULL", label: "마감" },
-              ].map(({ id, label }) => (
+              {[{ id: "ALL", label: "전체 상태" }, { id: "OPEN", label: "모집 중" }, { id: "FULL", label: "마감" }].map(({ id, label }) => (
                 <button
-                  key={id}
-                  onClick={() => setFilterStatus(id)}
+                  key={id} onClick={() => setFilterStatus(id)}
                   style={{
-                    padding: "6px 14px", fontSize: "13px", fontWeight: "500",
-                    borderRadius: "18px", cursor: "pointer",
-                    border: filterStatus === id ? "none" : "1px solid #eee",
-                    backgroundColor: filterStatus === id ? "#ef4b5f" : "#fff",
-                    color: filterStatus === id ? "#fff" : "#666",
+                    padding: "6px 14px", fontSize: "13px", fontWeight: "500", borderRadius: "18px", cursor: "pointer",
+                    border: filterStatus === id ? "none" : "1px solid #eee", backgroundColor: filterStatus === id ? "#ef4b5f" : "#fff", color: filterStatus === id ? "#fff" : "#666",
                   }}
                 >
                   {label}
@@ -234,26 +210,26 @@ export default function CrewPage({ currentUser, onOpenChat }) {
               <div style={{ textAlign: 'center', padding: '40px' }}>로딩 중...</div>
             ) : (
               <div className="card-grid">
-                {/* 새 크루 만들기 카드 */}
                 <div
                   onClick={() => {
-                    if (!currentUser) {
-                      alert('로그인 후 이용 가능합니다.');
-                      return;
-                    }
+                    if (!currentUser) return alert('로그인 후 이용 가능합니다.');
                     setIsCreateModalOpen(true);
                   }}
                   style={{ cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "220px", borderRadius: '16px', border: '2px dashed #ddd', backgroundColor: '#f9f9f9', transition: 'all 0.2s ease' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#ef4b5f'; e.currentTarget.style.backgroundColor = '#fff5f6'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#ddd'; e.currentTarget.style.backgroundColor = '#f9f9f9'; }}
                 >
                   <div style={{ fontSize: '40px', color: '#ef4b5f', marginBottom: '8px' }}>+</div>
                   <div style={{ fontSize: '14px', fontWeight: '700', color: '#888' }}>새 크루 만들기</div>
                 </div>
 
-                {/* ✅ 클라이언트 필터 적용된 목록 */}
                 {filteredCrews.map(crew => (
-                  <CrewCard key={crew.id} crew={crew} onClick={(c) => goTo("detail", c)} />
+                  <CrewCard 
+                    key={crew.id} 
+                    crew={crew} 
+                    currentUser={currentUser} 
+                    onClick={(c) => goTo("detail", c)} 
+                    onEdit={handleEdit}      
+                    onDelete={handleDelete}  
+                  />
                 ))}
 
                 {filteredCrews.length === 0 && !loading && (
@@ -268,20 +244,25 @@ export default function CrewPage({ currentUser, onOpenChat }) {
         </>
       )}
 
+      {/* 💡 상세 페이지 컴포넌트로 핸들러 넘겨주기 */}
       {view === "detail" && selectedCrew && (
         <CrewDetailPage
           crew={selectedCrew}
           currentUser={currentUser}
           onBack={() => setView("list")}
           onOpenDmChat={(nickname) => handleOpenDm(nickname)}
+          onEdit={handleEdit}      // 상세페이지 안에 띄워질 수정 버튼용
+          onDelete={handleDelete}  // 상세페이지 안에 띄워질 삭제 버튼용
         />
-
-
       )}
 
-      {isCreateModalOpen && (
+      {(isCreateModalOpen || editingCrew) && (
         <CreateCrewModal
-          onClose={() => setIsCreateModalOpen(false)}
+          initialData={editingCrew}
+          onClose={() => {
+            setIsCreateModalOpen(false);
+            setEditingCrew(null);
+          }}
           onSubmit={async (formData) => {
             try {
               const payload = {
@@ -290,35 +271,34 @@ export default function CrewPage({ currentUser, onOpenChat }) {
                 content: formData.content,
                 matchDate: formData.matchDate,
                 stadium: formData.stadium,
-                supportTeamId: formData.teamId, // 백엔드 필수 필드 반영
-                homeTeamId: formData.teamId,
-                awayTeamId: formData.teamId,
+                supportTeamId: formData.teamId, 
+                homeTeamId: formData.homeTeamId,
+                awayTeamId: formData.awayTeamId,
                 maxParticipants: formData.maxParticipants,
-                maxMember: formData.maxParticipants, // 백엔드 필드명 확인용 중복 전송
+                maxMember: formData.maxParticipants, 
                 isPublic: formData.isPublic,
               };
-              const res = await api.post('/posts', payload);
-              const newId = res.data?.data?.id || res.data?.id;
 
-              setIsCreateModalOpen(false);
-              fetchCrews();
-
-              if (newId) {
-                alert('모집글이 등록되었습니다!');
-                // 상세 페이지로 자동 이동 (필요한 최소 정보를 담아 이동)
-                goTo("detail", { 
-                  id: newId, 
-                  ...payload, 
-                  authorNickname: currentUser?.nickname,
-                  currentParticipants: 1 
-                });
+              if (editingCrew) {
+                // 수정
+                await api.put(`/posts/${editingCrew.id}`, payload);
+                alert("성공적으로 수정되었습니다.");
+                
+                // 💡 수정 후 상세 페이지를 보고 있는 상태라면 데이터 바로 동기화 (새로고침 없이 내용 반영)
+                if (selectedCrew?.id === editingCrew.id) {
+                  setSelectedCrew(prev => ({ ...prev, ...payload }));
+                }
               } else {
+                // 작성
+                await api.post('/posts', payload);
                 alert('모집글이 등록되었습니다!');
               }
+
+              setIsCreateModalOpen(false);
+              setEditingCrew(null);
+              fetchCrews(); // 리스트 갱신
             } catch (err) {
-              console.error("Crew creation error:", err);
-              const errMsg = err.response?.data?.message || "입력 정보를 다시 확인해주세요.";
-              alert(`생성 실패: ${errMsg}`);
+              alert(`처리 실패: ${err.response?.data?.message || err.message}`);
             }
           }}
         />
