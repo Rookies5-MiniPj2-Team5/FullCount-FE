@@ -104,6 +104,10 @@ export default function CrewDetailPage({
 
   const isAuthor = currentUser?.nickname === crew?.authorNickname;
   const isUserInCrew = members.some(m => m.nickname === currentUser?.nickname);
+  const approvedMembers = members.filter(m => m.isApproved !== false);
+  const pendingMembers = members.filter(m => m.isApproved === false);
+  const isPendingUser = pendingMembers.some(m => m.nickname === currentUser?.nickname);
+  const currentParticipantsCount = approvedMembers.length;
 
   const handleApply = async (message) => {
     try {
@@ -114,6 +118,29 @@ export default function CrewDetailPage({
     } catch (err) {
       alert(err.response?.data?.message || "신청에 실패했습니다. 이미 참여 중이거나 정원이 찼을 수 있습니다.");
     }
+
+    // 1. 방장의 승인 처리 함수
+  const handleApprove = async (targetMemberId) => {
+    try {
+      await api.post(`/posts/${crew.id}/members/${targetMemberId}/approve`);
+      alert("크루원으로 승인되었습니다!");
+      fetchMembers(); // 상태 즉시 새로고침
+    } catch (err) {
+      alert(err.response?.data?.message || "승인에 실패했습니다.");
+    }
+  };
+
+  // 2. 방장의 거절 처리 함수
+  const handleReject = async (targetMemberId) => {
+    if (!window.confirm("이 멤버의 신청을 거절하시겠습니까?")) return;
+    try {
+      await api.delete(`/posts/${crew.id}/members/${targetMemberId}/reject`);
+      alert("신청이 거절되었습니다.");
+      fetchMembers(); // 상태 즉시 새로고침
+    } catch (err) {
+      alert(err.response?.data?.message || "거절에 실패했습니다.");
+    }
+  };
   };
 
   return (
@@ -256,22 +283,63 @@ export default function CrewDetailPage({
         )}
 
         {tab === "members" && (
-          <div style={{ background: "#fff", borderRadius: 12, padding: "4px 16px", marginBottom: 12, border: "1px solid #eee" }}>
-            {loadingMembers ? (
-              <div style={{ padding: 20, textAlign: "center" }}>로딩 중...</div>
-            ) : (
-              members.map((m, idx) => (
-                <MemberItem 
-                  key={idx} 
-                  member={m} 
-                  onClick={(nickname) => {
-                    if (onOpenDmChat && nickname !== currentUser?.nickname) {
-                      onOpenDmChat(nickname);
-                    }
-                  }}
-                />
-              ))
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 12 }}>
+            
+            {/* 1. 승인된 정식 멤버 목록 */}
+            <div style={{ background: "#fff", borderRadius: 12, padding: "4px 16px", border: "1px solid #eee" }}>
+              {loadingMembers ? (
+                <div style={{ padding: 20, textAlign: "center" }}>로딩 중...</div>
+              ) : (
+                approvedMembers.map((m, idx) => (
+                  <MemberItem 
+                    key={idx} 
+                    member={m} 
+                    onClick={(nickname) => {
+                      if (onOpenDmChat && nickname !== currentUser?.nickname) {
+                        onOpenDmChat(nickname);
+                      }
+                    }}
+                  />
+                ))
+              )}
+            </div>
+
+            {/* 2. ✨ 방장에게만 보이는 [가입 대기열] UI */}
+            {isAuthor && pendingMembers.length > 0 && (
+              <div style={{ background: "#fff0f3", borderRadius: 12, padding: "4px 16px", border: "1px solid #ffcccc" }}>
+                <div style={{ padding: "12px 0", fontSize: 13, fontWeight: 700, color: "#e94560", borderBottom: "1px solid #ffcccc" }}>
+                  ⏳ 가입 대기 중인 멤버 ({pendingMembers.length})
+                </div>
+                
+                {pendingMembers.map((m, idx) => (
+                  <div key={`pending-${idx}`} style={{ padding: "12px 0", borderBottom: idx !== pendingMembers.length - 1 ? "1px solid #ffcccc" : "none" }}>
+                    <MemberItem member={m} />
+                    {/* 지원 메시지 표시 */}
+                    {m.applyMessage && (
+                      <div style={{ fontSize: 13, color: "#555", padding: "8px 12px", background: "#fff", borderRadius: 8, marginTop: 8, marginLeft: 50 }}>
+                        💬 "{m.applyMessage}"
+                      </div>
+                    )}
+                    {/* 승인 / 거절 버튼 */}
+                    <div style={{ display: "flex", gap: 8, marginTop: 12, marginLeft: 50 }}>
+                      <button 
+                        onClick={() => handleApprove(m.memberId || m.id)} 
+                        style={{ flex: 1, padding: "8px", background: teamColor, color: "#fff", border: "none", borderRadius: "8px", fontSize: 13, fontWeight: "bold", cursor: "pointer" }}
+                      >
+                        ✅ 승인하기
+                      </button>
+                      <button 
+                        onClick={() => handleReject(m.memberId || m.id)} 
+                        style={{ flex: 1, padding: "8px", background: "#fff", color: "#666", border: "1px solid #ccc", borderRadius: "8px", fontSize: 13, fontWeight: "bold", cursor: "pointer" }}
+                      >
+                        ❌ 거절하기
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
+
           </div>
         )}
       </div>
