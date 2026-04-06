@@ -166,14 +166,14 @@ function GameCard({ game, isMyTeam, onJoinChat }) {
               <div className="tgc-score-row">
                 <span
                   className="tgc-score"
-                  style={{ color: game.awayScore > game.homeScore ? awayColor : '#ccc' }}
+                  style={{ color: game.awayScore > game.homeScore ? '#FF4D4F' : '#888' }}
                 >
                   {game.awayScore ?? '-'}
                 </span>
                 <span className="tgc-score-sep">:</span>
                 <span
                   className="tgc-score"
-                  style={{ color: game.homeScore > game.awayScore ? homeColor : '#ccc' }}
+                  style={{ color: game.homeScore > game.awayScore ? '#FF4D4F' : '#888' }}
                 >
                   {game.homeScore ?? '-'}
                 </span>
@@ -261,11 +261,18 @@ export default function TodaysGame({ myTeam, onJoinChat }) {
 
   async function fetchLiveScore() {
     try {
-      const today = new Date().toISOString().slice(0, 10)
+      // [시연용 임시 코드] 오늘이 월요일이라 데이터가 없으므로 어제 날짜로 강제 변경
+      const demoDate = new Date();
+      demoDate.setDate(demoDate.getDate() - 1);
+      const today = demoDate.toISOString().slice(0, 10);
+      
       const res = await api.get(`/baseball/live?date=${today}`)
       const data = res.data;
 
-      const parsedGames = (data?.result?.games || []).map(g => {
+      // 스프링부트 글로벌 Response 래퍼(data: {...})가 있을 경우를 모두 대응
+      const gamesArray = data?.data?.result?.games || data?.result?.games || [];
+
+      const parsedGames = gamesArray.map(g => {
         const homeId = NAVER_TEAM_MAP[g.homeTeamCode] || g.homeTeamCode
         const awayId = NAVER_TEAM_MAP[g.awayTeamCode] || g.awayTeamCode
 
@@ -292,11 +299,10 @@ export default function TodaysGame({ myTeam, onJoinChat }) {
         }
       })
 
-      if (parsedGames.length > 0) {
-        setGames(parsedGames)
-        setApiAvailable(true)
-        setLastFetched(new Date())
-      }
+      // API 호출이 성공했다면 경기가 없어도(휴식일) 데이터를 세팅합니다.
+      setGames(parsedGames)
+      setApiAvailable(true)
+      setLastFetched(new Date())
     } catch (e) {
       console.error('라이브 스코어 패칭 실패:', e)
       // 에러 시 mock 데이터 유지
@@ -333,17 +339,24 @@ export default function TodaysGame({ myTeam, onJoinChat }) {
       </div>
 
       <div className="todays-game-list">
-        {sortedGames.map((game) => {
-          const isMyTeam = myTeam && (game.homeTeam === myTeam || game.awayTeam === myTeam)
-          return (
-            <GameCard
-              key={game.id}
-              game={game}
-              isMyTeam={!!isMyTeam}
-              onJoinChat={onJoinChat}
-            />
-          )
-        })}
+        {sortedGames.length === 0 ? (
+          <div className="rest-day-message" style={{ textAlign: 'center', padding: '40px 0', color: '#888' }}>
+            <h3 style={{ marginBottom: '10px' }}>오늘은 KBO 정규리그 휴식일입니다 ⚾</h3>
+            <p>선수들이 재충전하는 날입니다. 내일 열릴 멋진 경기를 기대해 주세요!</p>
+          </div>
+        ) : (
+          sortedGames.map((game) => {
+            const isMyTeam = myTeam && (game.homeTeam === myTeam || game.awayTeam === myTeam)
+            return (
+              <GameCard
+                key={game.id}
+                game={game}
+                isMyTeam={!!isMyTeam}
+                onJoinChat={onJoinChat}
+              />
+            )
+          })
+        )}
       </div>
     </div>
   )
