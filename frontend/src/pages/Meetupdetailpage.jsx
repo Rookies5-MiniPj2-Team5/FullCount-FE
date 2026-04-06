@@ -5,6 +5,7 @@ import { TeamBadge } from '../components/TeamComponents';
 import { createOrGetMeetupGroupJoinRoom, fetchChatRoomDetail } from '../api/chat';
 import { applyMeetupMate, getMeetupMateMembers, getMeetupPost } from '../api/meetup';
 import { useAuth } from '../context/AuthContext';
+import api from '../api/api'; // ✨ 나가기, 강제퇴장 API 호출을 위해 추가
 
 const AUTHOR_TEAM_MAP = {
   'LG 트윈스': 'LG', '두산 베어스': 'DU', 'SSG 랜더스': 'SSG', 'KIA 타이거즈': 'KIA',
@@ -39,7 +40,8 @@ const getAuthorTeamCode = (authorTeam) => {
   return matchedEntry?.[1] || 'LG';
 };
 
-function MemberCard({ member }) {
+// ✨ 내보내기 버튼을 받을 수 있도록 actionButton prop 추가
+function MemberCard({ member, actionButton }) {
   return (
     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 0', borderBottom: '1px solid #f5f5f5' }}>
       <div style={{ width: 38, height: 38, borderRadius: '50%', background: '#1a2a4a', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 15, overflow: 'hidden' }}>
@@ -53,6 +55,8 @@ function MemberCard({ member }) {
         </div>
         {member.applyMessage && <div style={{ fontSize: 12, color: '#666', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{member.applyMessage}</div>}
       </div>
+      {/* ✨ 액션 버튼 영역 추가 */}
+      {actionButton && <div style={{ alignSelf: 'center' }}>{actionButton}</div>}
     </div>
   );
 }
@@ -166,16 +170,6 @@ export default function MeetupDetailPage({ postId, onBack, onOpenChat, onEdit, o
       setChatRoomLoading(true);
       await syncGroupChatRoom({ openChat: true });
       return;
-      /*
-      const createRes = await createOrGetMeetupGroupJoinRoom(postId);
-      const roomData = unwrapResponseData(createRes.data);
-      const roomId = extractChatRoomId(roomData);
-      if (!roomId) throw new Error('채팅방 ID가 없습니다.');
-      const detailRes = await fetchChatRoomDetail(roomId);
-      const detailData = unwrapResponseData(detailRes.data);
-      setGroupChatRoomId(roomId);
-      onOpenChat?.({ id: roomId, postId, roomType: detailData?.roomType || detailData?.chatRoomType || 'GROUP_JOIN', title: detailData?.title || post?.title, crewTeam: post?.authorTeam });
-      */
     } catch (error) {
       alert(getErrorMessage(error, '채팅방 처리에 실패했습니다.'));
     } finally {
@@ -183,11 +177,47 @@ export default function MeetupDetailPage({ postId, onBack, onOpenChat, onEdit, o
     }
   };
 
+  // ✨ 추가: 나가기 처리 함수
+  const handleLeave = async () => {
+    if (!window.confirm("정말 이 모집글에서 나가시겠습니까?")) return;
+    try {
+      await api.delete(`/posts/${postId}/leave`);
+      alert("모집글에서 나갔습니다.");
+      onBack?.(); 
+    } catch (err) {
+      alert(getErrorMessage(err, "나가기에 실패했습니다."));
+    }
+  };
+
+  // ✨ 추가: 강제 퇴장 처리 함수
+  const handleExpel = async (targetMemberId) => {
+    if (!targetMemberId) {
+      alert("에러: 멤버 ID가 없습니다."); return;
+    }
+    if (!window.confirm("이 멤버를 정말 퇴장시키겠습니까?")) return;
+    
+    try {
+      setMembersLoading(true);
+      await api.delete(`/posts/${postId}/members/${targetMemberId}/expel`);
+      alert("멤버를 퇴장시켰습니다.");
+      
+      // 상태 갱신 (인원수 및 멤버 리스트 갱신)
+      const [postRes, membersRes] = await Promise.all([getMeetupPost(postId), getMeetupMateMembers(postId)]);
+      setPost(normalizePost(unwrapResponseData(postRes.data)));
+      const memberData = unwrapResponseData(membersRes.data);
+      setMembers(Array.isArray(memberData) ? memberData : []);
+    } catch (err) {
+      alert(getErrorMessage(err, "퇴장 처리에 실패했습니다."));
+    } finally {
+      setMembersLoading(false);
+    }
+  };
+
   if (loading || !post) return <div style={{ textAlign: 'center', padding: 40 }}>로딩 중...</div>;
 
   return (
     <div>
-      {/* Top Bar: CrewDetailPage와 동일한 스타일 및 버튼 구조 적용 */}
+      {/* Top Bar */}
       <div className="top-bar" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button
@@ -199,7 +229,6 @@ export default function MeetupDetailPage({ postId, onBack, onOpenChat, onEdit, o
           <h1 style={{ fontSize: 18, margin: 0 }}>모집글 상세</h1>
         </div>
 
-        {/* 작성자 본인일 경우 [수정] / [삭제] 버튼 노출 (CrewDetailPage 코드 이식) */}
         {isAuthor && (
           <div style={{ display: "flex", gap: "6px" }}>
             {onEdit && (
@@ -311,7 +340,24 @@ export default function MeetupDetailPage({ postId, onBack, onOpenChat, onEdit, o
             ) : members.length > 0 ? (
               <div style={{ background: '#fff', borderRadius: 12, padding: 16, marginBottom: 12, border: '1px solid #eee' }}>
                 <div style={{ fontSize: 15, fontWeight: 700, color: '#1a2a4a', marginBottom: 12 }}>참여 멤버 목록 ({members.length}명)</div>
-                {members.map((member, index) => <MemberCard key={`${member.nickname}-${index}`} member={member} />)}
+                
+                {/* ✨ 내보내기 버튼이 포함된 MemberCard 매핑 */}
+                {members.map((member, index) => (
+                  <MemberCard 
+                    key={`${member.nickname}-${index}`} 
+                    member={member} 
+                    actionButton={
+                      isAuthor && member.nickname !== user?.nickname ? (
+                        <button 
+                          onClick={() => handleExpel(member.memberId || member.id)}
+                          style={{ padding: "4px 8px", background: "#fff", color: "#e94560", border: "1px solid #e94560", borderRadius: "6px", fontSize: 11, fontWeight: "bold", cursor: "pointer" }}
+                        >
+                          내보내기
+                        </button>
+                      ) : null
+                    }
+                  />
+                ))}
               </div>
             ) : (
               <div style={{ background: '#fff', borderRadius: 12, padding: '40px 16px', border: '1px solid #eee', textAlign: 'center' }}>
@@ -322,10 +368,20 @@ export default function MeetupDetailPage({ postId, onBack, onOpenChat, onEdit, o
         )}
       </div>
 
-      {!isAuthor && post.status !== 'CLOSED' && (
+      {/* ✨ 미참여 유저에게 보이는 [신청하기] 버튼 */}
+      {!isAuthor && !myMemberInfo && post.status !== 'CLOSED' && (
         <div style={{ position: 'fixed', bottom: 80, left: '50%', transform: 'translateX(-50%)', padding: '8px 16px', background: '#fff', borderRadius: '20px', border: '1px solid #eee', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 100 }}>
           <button onClick={() => { if (!user) return alert('로그인 후 이용 가능합니다.'); setIsApplyModalOpen(true); }} style={{ padding: '12px 32px', background: '#e94560', color: '#fff', border: 'none', borderRadius: 12, fontWeight: 700, fontSize: 16, cursor: 'pointer' }}>
             직관 메이트 신청하기
+          </button>
+        </div>
+      )}
+
+      {/* ✨ 참여 중인 유저에게 보이는 [나가기] 버튼 */}
+      {!isAuthor && myMemberInfo && (
+        <div style={{ position: 'fixed', bottom: 80, left: '50%', transform: 'translateX(-50%)', padding: '8px 16px', background: '#fff', borderRadius: '20px', border: '1px solid #eee', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 100 }}>
+          <button onClick={handleLeave} style={{ padding: '12px 32px', background: '#f5f5f5', color: '#666', border: '1px solid #ddd', borderRadius: 12, fontWeight: 700, fontSize: 16, cursor: 'pointer' }}>
+            🚪 모집글 나가기
           </button>
         </div>
       )}
