@@ -12,7 +12,7 @@ const TEAM_COLORS = {
   "KIA": "#EA0029",
 };
 
-// ─── 멤버 아이템 컴포넌트 ───
+// ─── 멤버 아이템 컴포넌트 (기존 100% 유지) ───
 function MemberItem({ member, onClick }) {
   return (
     <div 
@@ -84,7 +84,6 @@ export default function CrewDetailPage({
 
   const teamKey = crew.supportTeamName?.split(' ')[0] || crew.team?.split(' ')[0];
   const teamColor = TEAM_COLORS[teamKey] || "#e94560";
-  const isFull = crew.currentParticipants >= crew.maxParticipants;
 
   const fetchMembers = async () => {
     setLoadingMembers(true);
@@ -103,11 +102,11 @@ export default function CrewDetailPage({
   }, [crew?.id]);
 
   const isAuthor = currentUser?.nickname === crew?.authorNickname;
-  const isUserInCrew = members.some(m => m.nickname === currentUser?.nickname);
 
+  // 1. 크루 신청 함수
   const handleApply = async (message) => {
     try {
-      await api.post(`/posts/${crew.id}/join`);
+      await api.post(`/posts/${crew.id}/join`, { applyMessage: message });
       setApplyDone(true);
       setIsApplyModalOpen(false);
       fetchMembers(); 
@@ -115,9 +114,47 @@ export default function CrewDetailPage({
       alert(err.response?.data?.message || "신청에 실패했습니다. 이미 참여 중이거나 정원이 찼을 수 있습니다.");
     }
   };
+  
+  // 2. 승인 처리 함수
+  const handleApprove = async (targetMemberId) => {
+    if (!targetMemberId) {
+      alert("에러: 멤버 ID가 없습니다."); return;
+    }
+    try {
+      await api.post(`/posts/${crew.id}/members/${targetMemberId}/approve`);
+      alert("크루원으로 승인되었습니다!");
+      fetchMembers();
+    } catch (err) {
+      alert(err.response?.data?.message || "승인에 실패했습니다.");
+    }
+  };
+
+  // 3. 거절 처리 함수
+  const handleReject = async (targetMemberId) => {
+    if (!targetMemberId) {
+      alert("에러: 멤버 ID가 없습니다."); return;
+    }
+    if (!window.confirm("이 멤버의 신청을 거절하시겠습니까?")) return;
+    try {
+      await api.delete(`/posts/${crew.id}/members/${targetMemberId}/reject`);
+      alert("신청이 거절되었습니다.");
+      fetchMembers();
+    } catch (err) {
+      alert(err.response?.data?.message || "거절에 실패했습니다.");
+    }
+  };
+
+  // ✨ 멤버 상태 필터링 (빨간줄 해결!)
+  const approvedMembers = members.filter(m => m.isApproved !== false);
+  const pendingMembers = members.filter(m => m.isApproved === false);
+
+  const isUserInCrew = approvedMembers.some(m => m.nickname === currentUser?.nickname);
+  const isPendingUser = pendingMembers.some(m => m.nickname === currentUser?.nickname);
+  const currentParticipantsCount = approvedMembers.length;
+  const isFull = currentParticipantsCount >= crew.maxParticipants;
 
   return (
-    <div>
+    <div> 
       <div className="top-bar" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button
@@ -129,7 +166,6 @@ export default function CrewDetailPage({
           <h1 style={{ fontSize: 18, margin: 0 }}>크루 상세</h1>
         </div>
 
-        {/* 💡 작성자 본인일 경우 [수정] / [삭제] 버튼 노출 */}
         {isAuthor && (
           <div style={{ display: "flex", gap: "6px" }}>
             {onEdit && (
@@ -175,17 +211,19 @@ export default function CrewDetailPage({
           </div>
         </div>
 
+        {/* 인원수 표시 바 */}
         <div style={{ background: "#fff", borderRadius: 12, padding: 16, marginBottom: 12, border: "1px solid #eee" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
             <StatusBadge status={crew.status} />
             <span style={{ fontSize: 13, color: "#e94560", fontWeight: 700 }}>
-              👤 {crew.currentParticipants || crew.currentMembers} / {crew.maxParticipants}명
+              {/* 대기자를 제외한 승인된 인원만 표시됩니다 */}
+              👤 {currentParticipantsCount} / {crew.maxParticipants}명
             </span>
           </div>
           <div style={{ height: 8, background: "#f0f0f0", borderRadius: 999, overflow: "hidden" }}>
             <div style={{
               height: "100%",
-              width: `${((crew.currentParticipants || crew.currentMembers) / crew.maxParticipants) * 100}%`,
+              width: `${(currentParticipantsCount / crew.maxParticipants) * 100}%`,
               background: isFull ? "#ef4444" : teamColor,
               borderRadius: 999,
               transition: "width 0.4s ease",
@@ -196,7 +234,7 @@ export default function CrewDetailPage({
         <div style={{ display: "flex", background: "#fff", borderRadius: 12, border: "1px solid #eee", marginBottom: 12, overflow: "hidden" }}>
           {[
             { key: "info", label: "📋 직관 정보" },
-            { key: "members", label: `👥 멤버 (${members.length})` },
+            { key: "members", label: `👥 멤버 (${currentParticipantsCount})` },
           ].map(({ key, label }) => (
             <button
               key={key}
@@ -255,34 +293,77 @@ export default function CrewDetailPage({
           </>
         )}
 
+        {/* 멤버 탭 UI (대기열 및 버튼 오류 해결됨) */}
         {tab === "members" && (
-          <div style={{ background: "#fff", borderRadius: 12, padding: "4px 16px", marginBottom: 12, border: "1px solid #eee" }}>
-            {loadingMembers ? (
-              <div style={{ padding: 20, textAlign: "center" }}>로딩 중...</div>
-            ) : (
-              members.map((m, idx) => (
-                <MemberItem 
-                  key={idx} 
-                  member={m} 
-                  onClick={(nickname) => {
-                    if (onOpenDmChat && nickname !== currentUser?.nickname) {
-                      onOpenDmChat(nickname);
-                    }
-                  }}
-                />
-              ))
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 12 }}>
+            
+            {/* 1. 승인된 정식 멤버 목록 */}
+            <div style={{ background: "#fff", borderRadius: 12, padding: "4px 16px", border: "1px solid #eee" }}>
+              {loadingMembers ? (
+                <div style={{ padding: 20, textAlign: "center" }}>로딩 중...</div>
+              ) : (
+                approvedMembers.map((m, idx) => (
+                  <MemberItem 
+                    key={idx} 
+                    member={m} 
+                    onClick={(nickname) => {
+                      if (onOpenDmChat && nickname !== currentUser?.nickname) {
+                        onOpenDmChat(nickname);
+                      }
+                    }}
+                  />
+                ))
+              )}
+            </div>
+
+            {/* 2. 가입 대기열 (방장에게만 보임) */}
+            {isAuthor && pendingMembers.length > 0 && (
+              <div style={{ background: "#fff0f3", borderRadius: 12, padding: "4px 16px", border: "1px solid #ffcccc" }}>
+                <div style={{ padding: "12px 0", fontSize: 13, fontWeight: 700, color: "#e94560", borderBottom: "1px solid #ffcccc" }}>
+                  ⏳ 가입 대기 중인 멤버 ({pendingMembers.length})
+                </div>
+                
+                {pendingMembers.map((m, idx) => (
+                  <div key={`pending-${idx}`} style={{ padding: "12px 0", borderBottom: idx !== pendingMembers.length - 1 ? "1px solid #ffcccc" : "none" }}>
+                    <MemberItem member={m} />
+                    
+                    {/* 지원 메시지 */}
+                    {m.applyMessage && (
+                      <div style={{ fontSize: 13, color: "#555", padding: "8px 12px", background: "#fff", borderRadius: 8, marginTop: 8, marginLeft: 50 }}>
+                        💬 "{m.applyMessage}"
+                      </div>
+                    )}
+                    
+                    {/* 승인 / 거절 버튼 */}
+                    <div style={{ display: "flex", gap: 8, marginTop: 12, marginLeft: 50 }}>
+                      <button 
+                        onClick={() => handleApprove(m.memberId || m.id)} 
+                        style={{ flex: 1, padding: "8px", background: teamColor, color: "#fff", border: "none", borderRadius: "8px", fontSize: 13, fontWeight: "bold", cursor: "pointer" }}
+                      >
+                        ✅ 승인하기
+                      </button>
+                      <button 
+                        onClick={() => handleReject(m.memberId || m.id)} 
+                        style={{ flex: 1, padding: "8px", background: "#fff", color: "#666", border: "1px solid #ccc", borderRadius: "8px", fontSize: 13, fontWeight: "bold", cursor: "pointer" }}
+                      >
+                        ❌ 거절하기
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         )}
       </div>
 
-      {!isFull && !applyDone && !isUserInCrew && (
+      {/* 승인 전 (신청 가능) */}
+      {!isFull && !applyDone && !isUserInCrew && !isPendingUser && (
         <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", padding: "8px 16px", background: "#fff", borderRadius: "20px", border: "1px solid #eee", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", zIndex: 100 }}>
           <button
             onClick={() => {
               if (!currentUserId) {
-                alert('로그인 후 이용 가능합니다.');
-                return;
+                alert('로그인 후 이용 가능합니다.'); return;
               }
               setIsApplyModalOpen(true);
             }}
@@ -293,9 +374,12 @@ export default function CrewDetailPage({
         </div>
       )}
 
-      {(isFull || applyDone) && (
+      {/* 승인 대기 중 / 모집 마감 / 완료 표시 */}
+      {(isFull || applyDone || isPendingUser) && !isUserInCrew && (
         <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", padding: "8px 16px", background: "#fff", borderRadius: "20px", border: "1px solid #eee", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", zIndex: 100 }}>
-          <div style={{ padding: "12px 32px", background: "#f5f5f5", color: "#aaa", borderRadius: "12px", fontWeight: 700, fontSize: 16 }}>{applyDone ? "✅ 신청 완료" : "모집이 마감되었습니다"}</div>
+          <div style={{ padding: "12px 32px", background: "#f5f5f5", color: "#aaa", borderRadius: "12px", fontWeight: 700, fontSize: 16 }}>
+            {isPendingUser || applyDone ? "⏳ 방장의 승인 대기 중" : "모집이 마감되었습니다"}
+          </div>
         </div>
       )}
 
