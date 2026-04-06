@@ -58,7 +58,7 @@ const KBO_TEAMS = ['전체', 'LG', '두산', 'SSG', 'KIA', '삼성', '롯데', '
 const STATUS_CONFIG = {
   selling: { label: '판매중', bg: '#e6f9f0', color: '#14a85b', border: '#a8e6c7' },
   reserved: { label: '예약중', bg: '#fff8e1', color: '#e6a817', border: '#ffe082' },
-  sold: { label: '판매완료', bg: '#f0f0f0', color: '#999', border: '#ddd' },
+  sold: { label: '거래 완료', bg: '#f0f0f0', color: '#999', border: '#ddd' },
 };
 
 // ─── 상태 뱃지 ─────────────────────────────────────────────────────
@@ -139,7 +139,7 @@ function TicketCard({ ticket, onOpenDetail }) {
 }
 
 // ─── 티켓 상세 모달 ───────────────────────────────────────────────
-function TicketDetailModal({ ticket, onClose, onContact, currentUser }) {
+function TicketDetailModal({ ticket, onClose, onContact, currentUser, onEdit, onDelete }) {
   const overlayRef = useRef(null);
   const homeColor = TEAM_COLORS[ticket.homeTeam] || '#e94560';
   const awayColor = TEAM_COLORS[ticket.awayTeam] || '#666';
@@ -226,7 +226,15 @@ function TicketDetailModal({ ticket, onClose, onContact, currentUser }) {
           </div>
 
           <div className="ticket-detail__actions">
-            <button className="ticket-modal__btn-cancel" onClick={onClose}>닫기</button>
+            <div>
+              <button className="ticket-modal__btn-cancel" onClick={onClose} style={{marginRight: 8}}>닫기</button>
+              {isMyTicket && ticket.status === 'selling' && (
+                <>
+                  <button className="ticket-modal__btn-cancel" onClick={() => onEdit(ticket)} style={{marginRight: 8}}>수정</button>
+                  <button className="ticket-modal__btn-cancel" onClick={() => onDelete(ticket)} style={{color: '#ef4444', borderColor: '#fca5a5'}}>삭제</button>
+                </>
+              )}
+            </div>
             {!isMyTicket && ticket.status !== 'sold' && (
               <button
                 className="ticket-detail__contact-btn"
@@ -237,6 +245,9 @@ function TicketDetailModal({ ticket, onClose, onContact, currentUser }) {
             )}
             {isMyTicket && (
               <span className="ticket-detail__mine-badge">내가 등록한 티켓</span>
+            )}
+            {!isMyTicket && ticket.status === 'sold' && (
+              <span className="ticket-detail__mine-badge" style={{background: '#f3f4f6', color: '#9ca3af', border: '1px solid #e5e7eb'}}>거래 완료</span>
             )}
           </div>
         </div>
@@ -273,8 +284,8 @@ const EMPTY_FORM = {
   description: '',
 };
 
-function TicketWriteModal({ onClose, onSubmit }) {
-  const [form, setForm] = useState(EMPTY_FORM);
+function TicketWriteModal({ onClose, onSubmit, initialData }) {
+  const [form, setForm] = useState(initialData || EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
   const overlayRef = useRef(null);
 
@@ -313,7 +324,7 @@ function TicketWriteModal({ onClose, onSubmit }) {
     <div className="ticket-modal-overlay" ref={overlayRef} onClick={handleOverlayClick}>
       <div className="ticket-modal" role="dialog" aria-modal="true" aria-label="티켓 양도 글쓰기">
         <div className="ticket-modal__header">
-          <h3 className="ticket-modal__title">🎫 티켓 양도 등록</h3>
+          <h3 className="ticket-modal__title">{initialData ? '🎫 티켓 양도 수정' : '🎫 티켓 양도 등록'}</h3>
           <button className="ticket-modal__close" onClick={onClose} aria-label="닫기">✕</button>
         </div>
 
@@ -439,6 +450,7 @@ export default function TicketTransferBoard({ onOpenChat }) {
   const [filterTeam, setFilterTeam] = useState('전체');
   const [showWriteModal, setShowWriteModal] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState(null);
+  const [editingTicket, setEditingTicket] = useState(null);
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -481,7 +493,7 @@ export default function TicketTransferBoard({ onOpenChat }) {
           seatRow: t.seatRow || '',
           description: t.content || t.description || '',
           createdAt: t.createdAt ? t.createdAt.split('T')[0] : '방금 전',
-          status: t.status === 'CLOSED' ? 'sold' : (t.status === 'RESERVED' ? 'reserved' : 'selling'),
+          status: (t.status === 'CLOSED' || t.status === 'SOLD') ? 'sold' : (t.status === 'RESERVED' ? 'reserved' : 'selling'),
         };
       });
 
@@ -526,13 +538,31 @@ export default function TicketTransferBoard({ onOpenChat }) {
       alert('로그인이 필요합니다. 홈 화면의 로그인 폼을 이용해주세요.');
       return;
     }
+    setEditingTicket(null);
     setShowWriteModal(true);
   };
 
+  const handleEditClick = (ticket) => {
+    setEditingTicket(ticket);
+    setShowWriteModal(true);
+  };
+
+  const handleDeleteClick = async (ticket) => {
+    if (window.confirm('정말 이 양도글을 삭제하시겠습니까? 거래가 진행 중이라면 삭제할 수 없습니다.')) {
+      try {
+        await api.delete(`/ticket-transfers/${ticket.id}`);
+        setSelectedTicket(null);
+        await fetchTickets();
+      } catch (err) {
+        alert(err.response?.data?.message || '삭제에 실패했습니다.');
+      }
+    }
+  };
+
   const handleTicketSubmit = async (formData) => {
-    const combinedSeatArea = [formData.seatArea, formData.seatBlock, formData.seatRow]
-      .filter(Boolean)
-      .join(" ");
+    const combinedSeatArea = formData.seatArea.includes(formData.seatBlock) 
+      ? formData.seatArea 
+      : [formData.seatArea, formData.seatBlock, formData.seatRow].filter(Boolean).join(" ");
 
     const payload = {
       homeTeam: formData.homeTeam,
@@ -547,7 +577,11 @@ export default function TicketTransferBoard({ onOpenChat }) {
       description: formData.description || "",
     };
 
-    await api.post('/ticket-transfers', payload);
+    if (editingTicket) {
+      await api.put(`/ticket-transfers/${editingTicket.id}`, payload);
+    } else {
+      await api.post('/ticket-transfers', payload);
+    }
 
     // 등록 성공 시 목록 갱신
     await fetchTickets();
@@ -631,7 +665,8 @@ export default function TicketTransferBoard({ onOpenChat }) {
 
       {showWriteModal && (
         <TicketWriteModal
-          onClose={() => setShowWriteModal(false)}
+          initialData={editingTicket}
+          onClose={() => { setShowWriteModal(false); setEditingTicket(null); }}
           onSubmit={handleTicketSubmit}
         />
       )}
@@ -642,6 +677,8 @@ export default function TicketTransferBoard({ onOpenChat }) {
           currentUser={user}
           onClose={() => setSelectedTicket(null)}
           onContact={handleContact}
+          onEdit={handleEditClick}
+          onDelete={handleDeleteClick}
         />
       )}
     </div>
