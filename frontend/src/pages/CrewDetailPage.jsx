@@ -115,7 +115,7 @@ export default function CrewDetailPage({
     }
   };
   
-  // 2. 승인 처리 함수
+  // 승인 처리 함수
   const handleApprove = async (targetMemberId) => {
     if (!targetMemberId) {
       alert("에러: 멤버 ID가 없습니다."); return;
@@ -129,7 +129,7 @@ export default function CrewDetailPage({
     }
   };
 
-  // 3. 거절 처리 함수
+  // 거절 처리 함수
   const handleReject = async (targetMemberId) => {
     if (!targetMemberId) {
       alert("에러: 멤버 ID가 없습니다."); return;
@@ -144,7 +144,30 @@ export default function CrewDetailPage({
     }
   };
 
-  // ✨ 멤버 상태 필터링 (빨간줄 해결!)
+  // 나가기 처리 함수
+  const handleLeave = async () => {
+    if (!window.confirm("정말 이 크루에서 나가시겠습니까?")) return;
+    try {
+      await api.delete(`/posts/${crew.id}/leave`);
+      alert("크루에서 나갔습니다.");
+      onBack(); // 나가기 후 목록으로 이동
+    } catch (err) {
+      alert(err.response?.data?.message || "나가기에 실패했습니다.");
+    }
+  };
+
+  // 강제 퇴장 처리 함수
+  const handleExpel = async (targetMemberId) => {
+    if (!window.confirm("이 멤버를 정말 퇴장시키겠습니까?")) return;
+    try {
+      await api.delete(`/posts/${crew.id}/members/${targetMemberId}/expel`);
+      alert("멤버를 퇴장시켰습니다.");
+      fetchMembers();
+    } catch (err) {
+      alert(err.response?.data?.message || "퇴장 처리에 실패했습니다.");
+    }
+  };
+
   const approvedMembers = members.filter(m => m.isApproved !== false);
   const pendingMembers = members.filter(m => m.isApproved === false);
 
@@ -216,7 +239,6 @@ export default function CrewDetailPage({
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
             <StatusBadge status={crew.status} />
             <span style={{ fontSize: 13, color: "#e94560", fontWeight: 700 }}>
-              {/* 대기자를 제외한 승인된 인원만 표시됩니다 */}
               👤 {currentParticipantsCount} / {crew.maxParticipants}명
             </span>
           </div>
@@ -293,7 +315,7 @@ export default function CrewDetailPage({
           </>
         )}
 
-        {/* 멤버 탭 UI (대기열 및 버튼 오류 해결됨) */}
+        {/* 멤버 탭 UI (강제퇴장 버튼 포함) */}
         {tab === "members" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 12 }}>
             
@@ -303,15 +325,27 @@ export default function CrewDetailPage({
                 <div style={{ padding: 20, textAlign: "center" }}>로딩 중...</div>
               ) : (
                 approvedMembers.map((m, idx) => (
-                  <MemberItem 
-                    key={idx} 
-                    member={m} 
-                    onClick={(nickname) => {
-                      if (onOpenDmChat && nickname !== currentUser?.nickname) {
-                        onOpenDmChat(nickname);
-                      }
-                    }}
-                  />
+                  <div key={idx} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div style={{ flex: 1 }}>
+                      <MemberItem 
+                        member={m} 
+                        onClick={(nickname) => {
+                          if (onOpenDmChat && nickname !== currentUser?.nickname) {
+                            onOpenDmChat(nickname);
+                          }
+                        }}
+                      />
+                    </div>
+                    {/* 방장이면서 내가 아닌 멤버일 때 [내보내기] 버튼 노출 */}
+                    {isAuthor && m.nickname !== currentUser?.nickname && (
+                      <button 
+                        onClick={() => handleExpel(m.memberId || m.id)}
+                        style={{ padding: "4px 8px", background: "#fff", color: "#e94560", border: "1px solid #e94560", borderRadius: "6px", fontSize: 11, fontWeight: "bold", cursor: "pointer", marginLeft: 8 }}
+                      >
+                        내보내기
+                      </button>
+                    )}
+                  </div>
                 ))
               )}
             </div>
@@ -374,12 +408,24 @@ export default function CrewDetailPage({
         </div>
       )}
 
-      {/* 승인 대기 중 / 모집 마감 / 완료 표시 */}
+      {/* 승인 대기 중 / 모집 마감 표시 */}
       {(isFull || applyDone || isPendingUser) && !isUserInCrew && (
         <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", padding: "8px 16px", background: "#fff", borderRadius: "20px", border: "1px solid #eee", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", zIndex: 100 }}>
           <div style={{ padding: "12px 32px", background: "#f5f5f5", color: "#aaa", borderRadius: "12px", fontWeight: 700, fontSize: 16 }}>
             {isPendingUser || applyDone ? "⏳ 방장의 승인 대기 중" : "모집이 마감되었습니다"}
           </div>
+        </div>
+      )}
+
+      {/* 승인 완료된 멤버에게 보이는 [크루 나가기] 버튼 */}
+      {isUserInCrew && !isAuthor && (
+        <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", padding: "8px 16px", background: "#fff", borderRadius: "20px", border: "1px solid #eee", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", zIndex: 100 }}>
+          <button
+            onClick={handleLeave}
+            style={{ padding: "12px 32px", background: "#f5f5f5", color: "#666", border: "1px solid #ddd", borderRadius: "12px", fontWeight: 700, fontSize: 16, cursor: "pointer" }}
+          >
+            🚪 크루 나가기
+          </button>
         </div>
       )}
 
@@ -390,6 +436,7 @@ export default function CrewDetailPage({
           onSubmit={handleApply}
         />
       )}
+
     </div>
   );
 }
