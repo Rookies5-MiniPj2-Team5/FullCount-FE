@@ -24,6 +24,7 @@ const normalizePost = (post) => ({
 });
 
 const extractChatRoomId = (room) => room?.chatRoomId ?? room?.roomId ?? room?.id ?? null;
+const normalizeChatRoomId = (roomId) => (roomId == null ? null : Number(roomId));
 
 const getAuthorTeamCode = (authorTeam) => {
   if (!authorTeam) return 'LG';
@@ -69,6 +70,32 @@ export default function MeetupDetailPage({ postId, onBack, onOpenChat, onEdit, o
   const progressRatio = maxParticipants > 0 ? Math.min(currentParticipants / maxParticipants, 1) : 0;
   const authorTeamCode = getAuthorTeamCode(post?.authorTeam);
 
+  const syncGroupChatRoom = async ({ openChat = false } = {}) => {
+    const createRes = await createOrGetMeetupGroupJoinRoom(postId);
+    const roomData = unwrapResponseData(createRes.data);
+    const roomId = extractChatRoomId(roomData);
+
+    if (!roomId) throw new Error('채팅방 ID가 없습니다.');
+
+    const normalizedRoomId = normalizeChatRoomId(roomId);
+    setGroupChatRoomId(normalizedRoomId);
+    setPost((prev) => (prev ? { ...prev, chatRoomId: normalizedRoomId } : prev));
+
+    if (!openChat) return normalizedRoomId;
+
+    const detailRes = await fetchChatRoomDetail(normalizedRoomId);
+    const detailData = unwrapResponseData(detailRes.data);
+    onOpenChat?.({
+      id: normalizedRoomId,
+      postId,
+      roomType: detailData?.roomType || detailData?.chatRoomType || 'GROUP_JOIN',
+      title: detailData?.title || post?.title,
+      crewTeam: post?.authorTeam,
+    });
+
+    return normalizedRoomId;
+  };
+
   useEffect(() => {
     const fetchAll = async () => {
       try {
@@ -78,7 +105,7 @@ export default function MeetupDetailPage({ postId, onBack, onOpenChat, onEdit, o
         const memberData = unwrapResponseData(membersRes.data);
         setPost(postData);
         setMembers(Array.isArray(memberData) ? memberData : []);
-        if (postData?.chatRoomId) setGroupChatRoomId(postData.chatRoomId);
+        if (postData?.chatRoomId) setGroupChatRoomId(normalizeChatRoomId(postData.chatRoomId));
       } catch (error) {
         alert('게시글을 불러오지 못했습니다.');
         onBack?.();
@@ -98,15 +125,30 @@ export default function MeetupDetailPage({ postId, onBack, onOpenChat, onEdit, o
       .finally(() => setMembersLoading(false));
   }, [postId, tab]);
 
+  useEffect(() => {
+    if (!post || !isFull || groupChatRoomId) return;
+
+    syncGroupChatRoom().catch((error) => {
+      console.error('Failed to ensure meetup group chat room', error);
+    });
+  }, [groupChatRoomId, isFull, post, postId]);
+
   const handleApply = async (applyMessage) => {
     try {
       await applyMeetupMate(postId, applyMessage);
       alert('신청이 완료되었습니다.');
       setIsApplyModalOpen(false);
       setTab('apply');
-      const membersRes = await getMeetupMateMembers(postId);
+      const [postRes, membersRes] = await Promise.all([getMeetupPost(postId), getMeetupMateMembers(postId)]);
+      const postData = normalizePost(unwrapResponseData(postRes.data));
       const memberData = unwrapResponseData(membersRes.data);
+      setPost(postData);
       setMembers(Array.isArray(memberData) ? memberData : []);
+      if (postData?.chatRoomId) {
+        setGroupChatRoomId(normalizeChatRoomId(postData.chatRoomId));
+      } else if (postData.maxParticipants > 0 && postData.currentParticipants >= postData.maxParticipants) {
+        await syncGroupChatRoom();
+      }
     } catch (error) {
       alert('신청에 실패했습니다.');
     }
@@ -116,6 +158,9 @@ export default function MeetupDetailPage({ postId, onBack, onOpenChat, onEdit, o
     if (!isFull || chatRoomLoading) return;
     try {
       setChatRoomLoading(true);
+      await syncGroupChatRoom({ openChat: true });
+      return;
+      /*
       const createRes = await createOrGetMeetupGroupJoinRoom(postId);
       const roomData = unwrapResponseData(createRes.data);
       const roomId = extractChatRoomId(roomData);
@@ -124,6 +169,7 @@ export default function MeetupDetailPage({ postId, onBack, onOpenChat, onEdit, o
       const detailData = unwrapResponseData(detailRes.data);
       setGroupChatRoomId(roomId);
       onOpenChat?.({ id: roomId, postId, roomType: detailData?.roomType || detailData?.chatRoomType || 'GROUP_JOIN', title: detailData?.title || post?.title, crewTeam: post?.authorTeam });
+      */
     } catch (error) {
       alert('채팅방 처리에 실패했습니다.');
     } finally {

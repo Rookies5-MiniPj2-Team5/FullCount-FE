@@ -125,7 +125,7 @@ function MeetupCard({ post, currentUser, onClick, onEdit, onDelete }) {
   );
 }
 
-export default function MeetupPage({ onSelectPost }) {
+export default function MeetupPage({ onSelectPost, onOpenChat }) {
   const { user } = useAuth();
   const [posts, setPosts] = useState([]);
   const [selectedPostId, setSelectedPostId] = useState(null);
@@ -241,6 +241,7 @@ export default function MeetupPage({ onSelectPost }) {
         <MeetupDetailPage 
           postId={selectedPostId} 
           onBack={() => setSelectedPostId(null)} 
+          onOpenChat={onOpenChat}
           onEdit={handleEditClick}   
           onDelete={handleDelete}    
         />

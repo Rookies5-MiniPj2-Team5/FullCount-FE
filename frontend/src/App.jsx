@@ -126,10 +126,10 @@ export default function App() {
       case 'meetup':
         return selectedPostId
           ? <MeetupDetailPage postId={selectedPostId} onBack={() => navigateTo('meetup')} onOpenChat={handleOpenChat} />
-          : <MeetupPage key="meetup" onSelectPost={(id) => navigateTo('meetup', id)} />;
+          : <MeetupPage key="meetup" onSelectPost={(id) => navigateTo('meetup', id)} onOpenChat={handleOpenChat} />;
 
       case 'meetup-create':
-        return <MeetupPage key="meetup-create" initialOpen={true} onSelectPost={(id) => navigateTo('meetup', id)} />;
+        return <MeetupPage key="meetup-create" initialOpen={true} onSelectPost={(id) => navigateTo('meetup', id)} onOpenChat={handleOpenChat} />;
 
       case 'crew':
         return <CrewPage currentUser={user} onOpenChat={handleOpenChat} />;
@@ -145,7 +145,7 @@ export default function App() {
         return <SignupPage onSwitchToLogin={() => navigateTo('home')} />;
 
       default:
-        return <MeetupPage onSelectPost={(id) => navigateTo('meetup', id)} />;
+        return <MeetupPage onSelectPost={(id) => navigateTo('meetup', id)} onOpenChat={handleOpenChat} />;
     }
   };
 
