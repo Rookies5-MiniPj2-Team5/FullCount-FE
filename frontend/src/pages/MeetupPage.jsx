@@ -40,6 +40,12 @@ const normalizePost = (post) => ({
   maxParticipants: Number(post?.maxParticipants) || 0,
 });
 
+const getErrorMessage = (error, fallbackMessage) =>
+  error?.response?.data?.message ||
+  error?.response?.data?.error ||
+  error?.message ||
+  fallbackMessage;
+
 const getTeamCode = (teamId, teamName) => {
   if (teamId && ID_TO_TEAM_CODE[teamId]) return ID_TO_TEAM_CODE[teamId];
   const name = teamName || '';
@@ -125,7 +131,7 @@ function MeetupCard({ post, currentUser, onClick, onEdit, onDelete }) {
   );
 }
 
-export default function MeetupPage({ onSelectPost }) {
+export default function MeetupPage({ onSelectPost, onOpenChat }) {
   const { user } = useAuth();
   const [posts, setPosts] = useState([]);
   const [selectedPostId, setSelectedPostId] = useState(null);
@@ -167,7 +173,7 @@ export default function MeetupPage({ onSelectPost }) {
       setSelectedPostId(null);
       fetchMates();
     } catch (error) {
-      alert('삭제 실패');
+      alert(getErrorMessage(error, '삭제 실패'));
     }
   };
 
@@ -231,7 +237,7 @@ export default function MeetupPage({ onSelectPost }) {
       resetForm();
       fetchMates();
     } catch (error) {
-      alert('처리 실패');
+      alert(getErrorMessage(error, '처리 실패'));
     }
   };
 
@@ -241,6 +247,7 @@ export default function MeetupPage({ onSelectPost }) {
         <MeetupDetailPage 
           postId={selectedPostId} 
           onBack={() => setSelectedPostId(null)} 
+          onOpenChat={onOpenChat}
           onEdit={handleEditClick}   
           onDelete={handleDelete}    
         />
