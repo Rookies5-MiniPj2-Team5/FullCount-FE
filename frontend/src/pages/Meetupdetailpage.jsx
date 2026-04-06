@@ -17,6 +17,12 @@ const unwrapResponseData = (responseData) => {
   return responseData;
 };
 
+const getErrorMessage = (error, fallbackMessage) =>
+  error?.response?.data?.message ||
+  error?.response?.data?.error ||
+  error?.message ||
+  fallbackMessage;
+
 const normalizePost = (post) => ({
   ...post,
   currentParticipants: Number(post?.currentParticipants) || 0,
@@ -107,7 +113,7 @@ export default function MeetupDetailPage({ postId, onBack, onOpenChat, onEdit, o
         setMembers(Array.isArray(memberData) ? memberData : []);
         if (postData?.chatRoomId) setGroupChatRoomId(normalizeChatRoomId(postData.chatRoomId));
       } catch (error) {
-        alert('게시글을 불러오지 못했습니다.');
+        alert(getErrorMessage(error, '게시글을 불러오지 못했습니다.'));
         onBack?.();
       } finally {
         setLoading(false);
@@ -150,7 +156,7 @@ export default function MeetupDetailPage({ postId, onBack, onOpenChat, onEdit, o
         await syncGroupChatRoom();
       }
     } catch (error) {
-      alert('신청에 실패했습니다.');
+      alert(getErrorMessage(error, '신청에 실패했습니다.'));
     }
   };
 
@@ -171,7 +177,7 @@ export default function MeetupDetailPage({ postId, onBack, onOpenChat, onEdit, o
       onOpenChat?.({ id: roomId, postId, roomType: detailData?.roomType || detailData?.chatRoomType || 'GROUP_JOIN', title: detailData?.title || post?.title, crewTeam: post?.authorTeam });
       */
     } catch (error) {
-      alert('채팅방 처리에 실패했습니다.');
+      alert(getErrorMessage(error, '채팅방 처리에 실패했습니다.'));
     } finally {
       setChatRoomLoading(false);
     }

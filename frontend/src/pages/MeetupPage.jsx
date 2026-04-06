@@ -40,6 +40,12 @@ const normalizePost = (post) => ({
   maxParticipants: Number(post?.maxParticipants) || 0,
 });
 
+const getErrorMessage = (error, fallbackMessage) =>
+  error?.response?.data?.message ||
+  error?.response?.data?.error ||
+  error?.message ||
+  fallbackMessage;
+
 const getTeamCode = (teamId, teamName) => {
   if (teamId && ID_TO_TEAM_CODE[teamId]) return ID_TO_TEAM_CODE[teamId];
   const name = teamName || '';
@@ -167,7 +173,7 @@ export default function MeetupPage({ onSelectPost, onOpenChat }) {
       setSelectedPostId(null);
       fetchMates();
     } catch (error) {
-      alert('삭제 실패');
+      alert(getErrorMessage(error, '삭제 실패'));
     }
   };
 
@@ -231,7 +237,7 @@ export default function MeetupPage({ onSelectPost, onOpenChat }) {
       resetForm();
       fetchMates();
     } catch (error) {
-      alert('처리 실패');
+      alert(getErrorMessage(error, '처리 실패'));
     }
   };
 
