@@ -460,7 +460,7 @@ export default function TicketTransferBoard({ onOpenChat }) {
       } else if (data) {
         items = Array.isArray(data) ? data : (data.content || []);
       }
-      
+
       // ✅ 데이터 정규화: 백엔드 필드명(TransferResponse)을 프론트 규격에 매핑
       const normalized = items.map(t => {
         const homeShort = getShortName(t.homeTeamName || t.homeTeam);
@@ -502,35 +502,21 @@ export default function TicketTransferBoard({ onOpenChat }) {
     }
 
     try {
-      let roomId;
-
-      if (ticket.authorId) {
-        // authorId가 있으면 바로 DM 방 생성/조회
-        const res = await api.post(`/chat/rooms/dm/user/${ticket.authorId}`);
-        roomId = res.data.data?.chatRoomId || res.data.data?.id || res.data?.id;
-      } else if (ticket.author) {
-        // authorId가 없으면 닉네임으로 조회
-        console.warn('[TicketTransfer] authorId 없음 - 닉네임으로 DM 방 생성 시도:', ticket.author);
-        const room = await createOrGetDmByNickname(ticket.author);
-        roomId = room?.chatRoomId || room?.id;
-      } else {
-        alert('상대방 정보를 찾을 수 없습니다.');
-        return;
-      }
+      const res = await api.post(`/chat/rooms/transfer/${ticket.id}`);
+      const roomId = res.data.data?.chatRoomId || res.data?.chatRoomId;
 
       if (!roomId) throw new Error('채팅방 ID를 받지 못했습니다.');
 
       if (onOpenChat) {
         onOpenChat({
           id: roomId,
-          roomType: 'ONE_ON_ONE_DIRECT',
+          roomType: 'ONE_ON_ONE',
           title: ticket.author,
-          isDm: true,
-          dmTargetNickname: ticket.author,
+          isDm: false,
         });
       }
     } catch (err) {
-      console.error('DM 채팅방 생성 실패:', err);
+      console.error('채팅방 생성 실패:', err);
       alert('채팅방 생성에 실패했습니다.');
     }
   };
@@ -562,7 +548,7 @@ export default function TicketTransferBoard({ onOpenChat }) {
     };
 
     await api.post('/ticket-transfers', payload);
-    
+
     // 등록 성공 시 목록 갱신
     await fetchTickets();
   };

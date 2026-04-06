@@ -37,7 +37,7 @@ export default function App() {
       const urlPostId = searchParams.get('postId');
 
       setTab(urlTab);
-      setSelectedPostId(urlPostId ? urlPostId : null); 
+      setSelectedPostId(urlPostId ? urlPostId : null);
     };
 
     handlePopState();
@@ -84,6 +84,7 @@ export default function App() {
   }
 
   const handleOpenChat = (room) => {
+    console.log('openChat room:', JSON.stringify(room));
     setChatRoom(room)
   }
 
@@ -160,12 +161,11 @@ export default function App() {
             {NAV_ITEMS.map(item => (
               <button
                 key={item.id}
-                className={`nav-item ${
-                  tab === item.id || 
-                  (item.id === 'ticket' && tab === 'ticket-transfer') ||
-                  (item.id === 'meetup' && tab === 'meetup-create') 
+                className={`nav-item ${tab === item.id ||
+                    (item.id === 'ticket' && tab === 'ticket-transfer') ||
+                    (item.id === 'meetup' && tab === 'meetup-create')
                     ? 'active' : ''
-                }`}
+                  }`}
                 onClick={() => handleTabChange(item.id)}
               >
                 <span className="nav-icon">{item.icon}</span>
@@ -186,9 +186,9 @@ export default function App() {
 
       {user && (
         <>
-          <GlobalChatListener 
-            user={user} 
-            onNotification={handleIncomingNotification} 
+          <GlobalChatListener
+            user={user}
+            onNotification={handleIncomingNotification}
           />
           <ChatFab
             currentUser={user}
@@ -206,8 +206,8 @@ export default function App() {
           roomType={chatRoom.roomType}
           roomId={chatRoom.id}
           currentUser={user}
-          isDm={chatRoom.isDm || chatRoom.roomType === 'ONE_ON_ONE' || chatRoom.roomType === 'ONE_ON_ONE_DIRECT'}
-          dmTargetNickname={chatRoom.dmTargetNickname || (chatRoom.roomType?.includes('ONE_ON_ONE') ? chatRoom.title : undefined)}
+          isDm={chatRoom.isDm || chatRoom.roomType === 'ONE_ON_ONE_DIRECT'}
+          dmTargetNickname={chatRoom.dmTargetNickname || (chatRoom.roomType === 'ONE_ON_ONE_DIRECT' ? chatRoom.title : undefined)}
           onBack={handleCloseChat}
         />
       )}

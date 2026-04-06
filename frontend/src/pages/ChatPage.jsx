@@ -40,7 +40,9 @@ export default function ChatPage({
   const [showParticipants, setShowParticipants] = useState(false);
   const [isFullSize, setIsFullSize] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [isActing, setIsActing] = useState(false);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
+  const [transfer, setTransfer] = useState(null);
 
   const endRef = useRef(null);
   const msgListRef = useRef(null);
@@ -125,7 +127,7 @@ export default function ChatPage({
 
             try {
               await api.post(`/chat/rooms/${currentRoomId}/read`);
-            } catch {}
+            } catch { }
           },
           (error) => {
             console.error("STOMP 연결 실패:", error);
@@ -169,6 +171,69 @@ export default function ChatPage({
     el.addEventListener("scroll", handleScroll);
     return () => el.removeEventListener("scroll", handleScroll);
   }, []);
+
+  useEffect(() => {
+    if (!resolvedRoomId || roomType !== "ONE_ON_ONE") return;
+    const fetchTransfer = async () => {
+      try {
+        const res = await api.get(`/transfers/room/${resolvedRoomId}`);
+        const data = res.data?.data ?? res.data;
+        if (data && data.id) setTransfer(data);  // status 대신 id로 체크
+      } catch {
+        // Transfer 없으면 null 유지
+      }
+    };
+    fetchTransfer();
+  }, [resolvedRoomId, roomType]);
+
+  const handleTransferAction = useCallback(async (action) => {
+    if (isActing) return;
+    setIsActing(true);
+    try {
+      const endpoints = {
+        request: () => api.post(`/transfers/room/${resolvedRoomId}/request`),
+        pay: () => api.post(`/transfers/${transfer?.id}/pay`),
+        ticketSent: () => api.post(`/transfers/${transfer?.id}/ticket-sent`),
+        confirm: () => api.post(`/transfers/${transfer?.id}/confirm`),
+        cancel: () => api.post(`/transfers/${transfer?.id}/cancel`),
+      };
+      await endpoints[action]();
+
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      const res = await api.get(`/transfers/room/${resolvedRoomId}`);
+      const data = res.data.data ?? res.data;
+      if (data && data.id) {
+        setTransfer(data);
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || "처리에 실패했습니다.");
+    } finally {
+      setIsActing(false);
+    }
+  }, [transfer, resolvedRoomId, isActing]);
+
+  const handleLeave = useCallback(async () => {
+    if (!resolvedRoomId) return;
+
+    const isOneOnOne = roomType === "ONE_ON_ONE";
+    const confirmMsg = isOneOnOne
+      ? "거래가 완료되거나 취소된 경우에만 나갈 수 있습니다. 나가시겠습니까?"
+      : "채팅방을 나가시겠습니까?";
+
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      await api.delete(`/chat/rooms/${resolvedRoomId}/leave`);
+      onBack?.();
+    } catch (err) {
+      if (err.response?.status === 400) {
+        alert("거래 진행 중에는 채팅방을 나갈 수 없습니다.");
+      } else {
+        alert("나가기에 실패했습니다.");
+      }
+    }
+  }, [resolvedRoomId, roomType, onBack]);
 
   const handleSend = useCallback(() => {
     if (!inputText.trim() || !clientRef.current?.connected || !resolvedRoomId) return;
@@ -223,13 +288,60 @@ export default function ChatPage({
       && prevTime.getMinutes() === currTime.getMinutes();
   };
 
+  const renderTransferPanel = () => {
+    if (roomType !== "ONE_ON_ONE") return null;
+    const isSeller = transfer?.sellerId === currentUser?.id;
+    const isBuyer = transfer?.buyerId === currentUser?.id;
+
+    if (!transfer) {
+      return (
+        <div style={s.transferPanel}>
+          <span style={s.transferStatus}>거래 전 문의 단계</span>
+          {!isSeller && (
+            <button style={s.transferBtn} disabled={isActing} onClick={() => handleTransferAction("request")}>
+              🤝 양도 요청
+            </button>
+          )}
+        </div>
+      );
+    }
+
+    const statusLabel = {
+      REQUESTED: "양도 요청됨",
+      PAYMENT_COMPLETED: "결제 완료",
+      TICKET_SENT: "티켓 전달 완료",
+      COMPLETED: "거래 완료 ✅",
+      CANCELLED: "거래 취소됨",
+    }[transfer.status] ?? transfer.status;
+
+    return (
+      <div style={s.transferPanel}>
+        <span style={s.transferStatus}>거래 상태: {statusLabel}</span>
+        <div style={s.transferBtns}>
+          {transfer.status === "REQUESTED" && isBuyer && (
+            <button style={s.transferBtn} disabled={isActing} onClick={() => handleTransferAction("pay")}>💳 에스크로 결제</button>
+          )}
+          {transfer.status === "PAYMENT_COMPLETED" && isSeller && (
+            <button style={s.transferBtn} disabled={isActing} onClick={() => handleTransferAction("ticketSent")}>📨 티켓 전달 완료</button>
+          )}
+          {transfer.status === "TICKET_SENT" && isBuyer && (
+            <button style={s.transferBtn} disabled={isActing} onClick={() => handleTransferAction("confirm")}>✅ 인수 확정</button>
+          )}
+          {["REQUESTED", "PAYMENT_COMPLETED", "TICKET_SENT"].includes(transfer.status) && (
+            <button style={s.transferCancelBtn} disabled={isActing} onClick={() => handleTransferAction("cancel")}>거래 취소</button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div style={isFullSize ? s.fullWrapper : s.popupWrapper}>
       <div style={s.header}>
         <button
           style={s.backBtn}
           onClick={() => {
-            if (resolvedRoomId) api.post(`/chat/rooms/${resolvedRoomId}/read`).catch(() => {});
+            if (resolvedRoomId) api.post(`/chat/rooms/${resolvedRoomId}/read`).catch(() => { });
             onBack?.();
           }}
         >
@@ -242,6 +354,7 @@ export default function ChatPage({
           </div>
         </div>
         <button style={s.sizeBtn} onClick={() => setIsFullSize((v) => !v)}>{isFullSize ? "축소" : "확대"}</button>
+        <button style={s.leaveBtn} onClick={handleLeave}>나가기</button>
       </div>
 
       {showParticipants && (
@@ -295,6 +408,8 @@ export default function ChatPage({
       </div>
 
       {showScrollBtn && <button style={s.scrollBtn} onClick={() => endRef.current?.scrollIntoView({ behavior: "smooth" })}>맨 아래로</button>}
+
+      {renderTransferPanel()}
 
       <div style={s.inputArea}>
         <input
@@ -353,4 +468,10 @@ const s = {
   inputArea: { display: "flex", padding: 12, background: "#161b22", gap: 8 },
   input: { flex: 1, background: "#0d1117", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 20, color: "#fff", padding: "8px 14px", outline: "none", fontSize: 13 },
   sendBtn: { border: "none", borderRadius: 999, minWidth: 56, height: 36, color: "#fff", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center" },
+  leaveBtn: { background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)", color: "#ef4444", padding: "4px 8px", borderRadius: 6, cursor: "pointer", fontSize: 12 },
+  transferPanel: { padding: "10px 12px", background: "#1a2332", borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" },
+  transferStatus: { fontSize: 12, color: "#9ca3af" },
+  transferBtns: { display: "flex", gap: 6 },
+  transferBtn: { background: "#1d4ed8", border: "none", color: "#fff", padding: "6px 12px", borderRadius: 8, fontSize: 12, cursor: "pointer" },
+  transferCancelBtn: { background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)", color: "#ef4444", padding: "6px 12px", borderRadius: 8, fontSize: 12, cursor: "pointer" },
 };

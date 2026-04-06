@@ -109,10 +109,9 @@ export default function ChatFab({ currentUser, onOpenChat, refreshToggle }) {
     onOpenChat?.({
       id: room.chatRoomId,
       title: room.title,
-      roomType: room.roomType,
+      roomType: room.type ?? room.roomType,
     });
   };
-
   return (
     <div style={s.fabWrap} ref={popupRef}>
 
