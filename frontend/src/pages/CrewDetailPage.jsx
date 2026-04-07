@@ -73,16 +73,16 @@ export default function CrewDetailPage({
   onEdit,
   onDelete
 }) {
-  if (!crew) return null;
+  // ✅ [Hook 규칙] useState/useEffect를 모두 높은 후 조건부 반환 수행
+  const currentUserId = currentUser?.nickname;
 
-  const currentUserId = currentUser?.nickname; 
   const [tab, setTab] = useState("info");
   const [members, setMembers] = useState([]); 
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
   const [applyDone, setApplyDone] = useState(false);
   const [loadingMembers, setLoadingMembers] = useState(false);
 
-  const teamKey = crew.supportTeamName?.split(' ')[0] || crew.team?.split(' ')[0];
+  const teamKey = crew?.supportTeamName?.split(' ')[0] || crew?.team?.split(' ')[0];
   const teamColor = TEAM_COLORS[teamKey] || "#e94560";
 
   const fetchMembers = async () => {
@@ -102,6 +102,9 @@ export default function CrewDetailPage({
   }, [crew?.id]);
 
   const isAuthor = currentUser?.nickname === crew?.authorNickname;
+
+  // ✅ [Hook 규칙 준수] 모든 Hook(useState, useEffect) 호출 이후에 조건부 반환
+  if (!crew) return null;
 
   // 1. 크루 신청 함수
   const handleApply = async (message) => {

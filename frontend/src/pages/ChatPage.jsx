@@ -70,7 +70,6 @@ export default function ChatPage({
       isConnectingRef.current = true;
       let currentRoomId = initialRoomId ?? null;
       const isTempDmId = typeof currentRoomId === "string" && currentRoomId.startsWith("dm-");
-
       try {
         if (isDm && (isTempDmId || !currentRoomId) && crew?.id) {
           const dmRes = await api.post(`/chat/rooms/dm/crew/${crew.id}`);
@@ -93,7 +92,7 @@ export default function ChatPage({
         client.debug = null;
         clientRef.current = client;
 
-        const token = localStorage.getItem("accessToken");
+        const token = sessionStorage.getItem("accessToken");
         client.connect(
           { Authorization: `Bearer ${token}` },
           async () => {
