@@ -271,6 +271,19 @@ export default function MyPage() {
     return <AttendanceCalendar onBack={() => setView('main')} user={user} />;
   }
 
+  // ─── 다가오는 직관 일정 계산 (이미 로드된 participatingActivities 활용) ───
+  const _todayStr = new Date().toISOString().split('T')[0];
+  const upcomingGame = [...participatingActivities.crews, ...participatingActivities.mates]
+    .filter(a => a.matchDate && a.matchDate >= _todayStr)
+    .sort((a, b) => a.matchDate.localeCompare(b.matchDate))[0] || null;
+
+  const _formatMatchDate = (dateStr) => {
+    if (!dateStr) return '';
+    const d = new Date(dateStr + 'T00:00:00');
+    const days = ['일', '월', '화', '수', '목', '금', '토'];
+    return `${d.getMonth() + 1}월 ${d.getDate()}일 (${days[d.getDay()]})`;
+  };
+
   return (
     <div className="my-page">
       <div className="page-header">
@@ -451,11 +464,25 @@ export default function MyPage() {
 
       <div className="my-section" style={{ marginTop: 30 }}>
         <div className="my-section-title" style={{ fontWeight: 800, marginBottom: 16 }}>직관 일정</div>
-        <div className="schedule-card" style={{ background: '#2c3e50', padding: 20, borderRadius: 12, color: '#fff' }}>
-          <div className="schedule-label" style={{ opacity: 0.7, fontSize: 12, marginBottom: 8 }}>다가오는 직관</div>
-          <div className="schedule-date" style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>3월 28일 (금)</div>
-          <div className="schedule-match" style={{ fontSize: 16 }}>LG vs 두산 (잠실 야구장)</div>
-        </div>
+        {loadingList ? (
+          <div className="schedule-card" style={{ background: '#2c3e50', padding: 20, borderRadius: 12, color: '#fff', textAlign: 'center' }}>
+            <div style={{ opacity: 0.7, fontSize: 13 }}>⏳ 일정 불러오는 중...</div>
+          </div>
+        ) : upcomingGame ? (
+          <div className="schedule-card" style={{ background: '#2c3e50', padding: 20, borderRadius: 12, color: '#fff' }}>
+            <div className="schedule-label" style={{ opacity: 0.7, fontSize: 12, marginBottom: 8 }}>다가오는 직관</div>
+            <div className="schedule-date" style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>
+              {_formatMatchDate(upcomingGame.matchDate)}
+            </div>
+            <div className="schedule-match" style={{ fontSize: 16 }}>
+              {upcomingGame.title} · 🏟️ {upcomingGame.stadium || '경기장 미정'}
+            </div>
+          </div>
+        ) : (
+          <div className="schedule-card" style={{ background: '#2c3e50', padding: 20, borderRadius: 12, color: '#fff', textAlign: 'center' }}>
+            <div style={{ opacity: 0.7, fontSize: 13 }}>다가오는 직관 일정이 없습니다.</div>
+          </div>
+        )}
         <button
           className="see-all"
           onClick={() => setView('calendar')}

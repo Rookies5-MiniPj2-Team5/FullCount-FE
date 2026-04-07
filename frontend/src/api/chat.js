@@ -1,60 +1,19 @@
 import api from './api';
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
-const WS_URL = `${BASE_URL}/ws`;
+// ─────────────────────────────────────────────────────────────────────────────
+// 📌 NOTE: STOMP/WebSocket 연결은 이 파일에서 관리하지 않습니다.
+//    실시간 채팅  → ChatPage.jsx 내부 STOMP 클라이언트
+//    실시간 알림  → GlobalChatListener.jsx
+//    라이브 응원  → utils/stompLiveClient.js (createLiveCheerClient 팩토리)
+// ─────────────────────────────────────────────────────────────────────────────
 
-// ─────────────────────────────────────────────────────
-// [SOCKET] 실시간 통신 관련 (STOMP 등)
-// ─────────────────────────────────────────────────────
-
-export function connectSocket() {
-  // TODO: 실제 연결 로직 (new Client 등) 구현 시 수정
-  console.warn('[chat.js] connectSocket: mock mode', { WS_URL });
-  return null;
-}
-
-export function disconnectSocket() {
-  console.log('[chat.js] disconnectSocket');
-}
-
-export function subscribeToRoom(client, roomId) {
-  console.warn('[chat.js] subscribeToRoom: mock mode', { client, roomId });
-  return null;
-}
-
-/**
- * 메시지 발행 (전송)
- */
-export function sendMessage(client, roomId, payload) {
-  // TODO: BE 연동 시 아래 주석 해제
-  /*
-  client?.active && client.publish({
-    destination: `/app/chat/${roomId}`,
-    body: JSON.stringify({ roomId, ...payload }),
-    headers: { Authorization: `Bearer ${sessionStorage.getItem("accessToken")}` },
-  });
-  */
-
-  console.warn("[chat.js] sendMessage: 더미 모드", { roomId, payload });
-}
-
-// ─────────────────────────────────────────────────────
-// [REST API] 채팅방 (목록 · 상세 · 생성 · 내역)
-// ─────────────────────────────────────────────────────
-
-/**
- * 공통 인증 헤더 (필요 시 api 인스턴스 대신 fetch 사용 시 활용)
- */
-const authHeader = () => ({
-  "Content-Type": "application/json",
-  Authorization: `Bearer ${sessionStorage.getItem("accessToken")}`,
-});
+// ─────────────────────────────────────────────────────────────────────────────
+// [REST] 채팅방 목록 / 상세 / 생성
+// ─────────────────────────────────────────────────────────────────────────────
 
 /**
  * 내 채팅방 목록 조회 (페이징)
- * @summary GET /api/chat/rooms
- * @param {number} page
- * @param {number} size
+ * GET /api/chat/rooms?page={page}&size={size}&sort=createdAt,desc
  */
 export const fetchMyChatRooms = (page = 0, size = 10) =>
   api.get('/chat/rooms', {
@@ -66,16 +25,15 @@ export const fetchMyChatRooms = (page = 0, size = 10) =>
   });
 
 /**
- * 채팅방 상세 조회
- * @summary GET /api/chat/rooms/{roomId}
- * @param {number} roomId
+ * 채팅방 상세 조회 (참여자 목록 포함)
+ * GET /api/chat/rooms/{roomId}
  */
 export const fetchChatRoomDetail = (roomId) =>
   api.get(`/chat/rooms/${roomId}`);
 
 /**
- * 직관 모임(메이트/크루) 그룹 채팅방 참여/생성
- * @summary POST /api/chat/rooms?postId={postId}&type=GROUP_JOIN
+ * 직관 모임(메이트/크루) 그룹 채팅방 참여 or 생성
+ * POST /api/chat/rooms?postId={postId}&type=GROUP_JOIN
  */
 export const createOrGetMeetupGroupJoinRoom = (postId) =>
   api.post('/chat/rooms', null, {
@@ -87,33 +45,53 @@ export const createOrGetMeetupGroupJoinRoom = (postId) =>
 
 /**
  * 크루 1:1 문의 채팅방 생성 or 조회
+ * POST /api/chat/rooms/dm/crew/{crewId}
  * @param {number} crewId
- * @returns {Promise<{ id: number }>} chatRoomDTO
- * TODO: BE 연동 - POST /api/chat/dm/crew/{crewId}
  */
-export async function createOrGetCrewDmRoom(crewId) {
-  console.warn('[chat.js] createOrGetCrewDmRoom: mock mode', { crewId });
-  return { id: 9000 + crewId };
-}
+export const createOrGetCrewDmRoom = (crewId) =>
+  api.post(`/chat/rooms/dm/crew/${crewId}`);
 
-export async function createOrGetDmByNickname(nickname) {
-  console.warn('[chat.js] createOrGetDmByNickname: mock mode', { nickname });
-  return { id: 9500, title: nickname };
-}
+/**
+ * 닉네임 기반 1:1 DM 채팅방 생성 or 조회
+ * POST /api/chat/rooms/dm  { targetNickname }
+ * @param {string} nickname - 상대방 닉네임
+ */
+export const createOrGetDmByNickname = (nickname) =>
+  api.post('/chat/rooms/dm', { targetNickname: nickname });
 
 /**
  * 티켓 양도 1:1 문의 채팅방 생성 or 조회
- * @param {number} postId
+ * POST /api/chat/rooms/transfer/{postId}
+ * @param {number} postId - 티켓 양도 게시글 ID
  */
-export async function createOrGetTransferDmRoom(postId) {
-  console.warn('[chat.js] createOrGetTransferDmRoom: mock mode', { postId });
-  return { id: 8000 + postId };
-}
+export const createOrGetTransferDmRoom = (postId) =>
+  api.post(`/chat/rooms/transfer/${postId}`);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// [REST] 채팅 메시지
+// ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * 채팅방 과거 메시지 목록 조회
+ * 채팅방 과거 메시지 목록 조회 (페이징, 최신순)
+ * GET /api/chat/rooms/{roomId}/messages?page={page}
+ * @param {number} roomId
+ * @param {number} page - 0-indexed
  */
-export async function fetchChatHistory(roomId, page = 0) {
-  console.warn('[chat.js] fetchChatHistory: mock mode', { roomId, page });
-  return [];
-}
+export const fetchChatHistory = (roomId, page = 0) =>
+  api.get(`/chat/rooms/${roomId}/messages`, { params: { page } });
+
+/**
+ * 채팅방 읽음 처리
+ * POST /api/chat/rooms/{roomId}/read
+ * @param {number} roomId
+ */
+export const markRoomAsRead = (roomId) =>
+  api.post(`/chat/rooms/${roomId}/read`);
+
+/**
+ * 채팅방 나가기
+ * DELETE /api/chat/rooms/{roomId}/leave
+ * @param {number} roomId
+ */
+export const leaveChatRoom = (roomId) =>
+  api.delete(`/chat/rooms/${roomId}/leave`);

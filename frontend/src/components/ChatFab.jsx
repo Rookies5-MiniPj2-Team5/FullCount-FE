@@ -84,12 +84,20 @@ export default function ChatFab({ currentUser, onOpenChat, refreshToggle }) {
     }
   };
 
-  // 컴포넌트 마운트 시 + 30초마다 갱신 + 알림 수신 시 즉시 갱신
+  // 마운트 시 1회 즉시 로드 + 30초 안전망 폴링 + WebSocket 알림(refreshToggle) 수신 시 즉시 재로드
+  // ─ 폴링은 WebSocket 미수신 구간(송신 측 알림 미발행, 재연결 공백 등)의 안전망 역할만 담당
+  // ─ clearInterval을 cleanup으로 반환하여 언마운트 시 메모리 누수 방지
   useEffect(() => {
     loadRooms();
-    const interval = setInterval(loadRooms, 5000);
-    return () => clearInterval(interval);
+    const interval = setInterval(loadRooms, 30000); // 5s → 30s: GCL WebSocket이 실시간 갱신 담당
+    return () => clearInterval(interval);            // ✅ cleanup: 언마운트 시 인터벌 해제
   }, [refreshToggle]);
+
+  // FAB 열릴 때 즉시 최신화 — 30초 폴링 주기와 관계없이 항상 열 때 신선한 목록 보장
+  // ─ open이 false→true 로 변할 때만 실행 (닫을 때는 불필요)
+  useEffect(() => {
+    if (open) loadRooms();
+  }, [open]);
 
   // 팝업 외부 클릭 시 닫기
   useEffect(() => {

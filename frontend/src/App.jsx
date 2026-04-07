@@ -162,9 +162,9 @@ export default function App() {
               <button
                 key={item.id}
                 className={`nav-item ${tab === item.id ||
-                    (item.id === 'ticket' && tab === 'ticket-transfer') ||
-                    (item.id === 'meetup' && tab === 'meetup-create')
-                    ? 'active' : ''
+                  (item.id === 'ticket' && tab === 'ticket-transfer') ||
+                  (item.id === 'meetup' && tab === 'meetup-create')
+                  ? 'active' : ''
                   }`}
                 onClick={() => handleTabChange(item.id)}
               >
