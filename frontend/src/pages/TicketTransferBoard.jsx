@@ -560,22 +560,38 @@ export default function TicketTransferBoard({ onOpenChat }) {
   };
 
   const handleTicketSubmit = async (formData) => {
-    const combinedSeatArea = formData.seatArea.includes(formData.seatBlock) 
-      ? formData.seatArea 
-      : [formData.seatArea, formData.seatBlock, formData.seatRow].filter(Boolean).join(" ");
+    // ✅ Backend DTO: TicketPostDto.TicketTransferRequestDTO
+    // - homeTeam     (String, @NotBlank)   ← required
+    // - awayTeam     (String, @NotBlank)   ← required
+    // - matchDate    (LocalDate, @NotNull) ← required  e.g. "2026-04-10"
+    // - matchTime    (LocalTime, @NotNull) ← required  e.g. "18:30:00"
+    // - stadium      (String, @NotBlank)   ← required
+    // - seatArea     (String, @NotBlank)   ← required  (separate field — do NOT merge)
+    // - seatBlock    (String, optional)
+    // - seatRow      (String, optional)
+    // - price        (Integer, @NotNull, @Min(0)) ← must be Integer, NOT float
+    // - description  (String, optional)
+
+    // Ensure matchTime is a proper "HH:mm:ss" LocalTime string for Jackson
+    const rawTime = formData.matchTime || "00:00";
+    const matchTime = rawTime.includes(":") && rawTime.split(":").length === 2
+      ? `${rawTime}:00`    // "18:30"  →  "18:30:00"
+      : rawTime;           // already "18:30:00", pass through
 
     const payload = {
-      homeTeam: formData.homeTeam,
-      awayTeam: formData.awayTeam,
-      matchDate: formData.matchDate,
-      matchTime: formData.matchTime || "00:00:00",
-      stadium: formData.stadium || "",
-      seatArea: combinedSeatArea,
-      seatBlock: formData.seatBlock || "",
-      seatRow: formData.seatRow || "",
-      price: Number(formData.price),
+      homeTeam:    formData.homeTeam,
+      awayTeam:    formData.awayTeam,
+      matchDate:   formData.matchDate,          // "YYYY-MM-DD" — matches LocalDate
+      matchTime:   matchTime,                   // "HH:mm:ss"  — matches LocalTime
+      stadium:     formData.stadium || "",
+      seatArea:    formData.seatArea || "",     // ← kept separate (was incorrectly merged)
+      seatBlock:   formData.seatBlock || "",    // ← kept separate
+      seatRow:     formData.seatRow || "",      // ← kept separate
+      price:       parseInt(formData.price, 10), // ← Integer, not Number/float
       description: formData.description || "",
     };
+
+    console.log('🚀 [DEBUG] Admin Transfer Payload to Backend:', payload);
 
     if (editingTicket) {
       await api.put(`/ticket-transfers/${editingTicket.id}`, payload);
