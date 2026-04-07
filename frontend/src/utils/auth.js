@@ -30,7 +30,23 @@ export const getMemberIdFromToken = () => {
   if (!token) return null;
   try {
     const decoded = jwtDecode(token);
-    return decoded.sub; // 보통 sub에 memberId가 들어감
+    return decoded.sub; // sub에 memberId(Long)가 들어 있음
+  } catch (error) {
+    return null;
+  }
+};
+
+/**
+ * JWT 클레임에서 role 값을 읽어 반환합니다.
+ * 백엔드 JwtProvider가 claim("role", role.name())으로 삽입합니다.
+ * 예시 반환값: "ADMIN" | "USER" | null
+ */
+export const getRoleFromToken = () => {
+  const token = getToken();
+  if (!token) return null;
+  try {
+    const decoded = jwtDecode(token);
+    return decoded.role ?? null; // JwtProvider: .claim("role", role.name())
   } catch (error) {
     return null;
   }
